@@ -1,0 +1,1401 @@
+/* =====================================================
+   DashboardBlockchain.css — Blockchain Ledger Dashboard
+   Matches existing Dashboard design system tokens
+   ===================================================== */
+
+.blockchain-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 0 60px;
+}
+
+/* =====================================================
+   Page Header
+   ===================================================== */
+
+.blockchain-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, #1a1a2e, #16213e 50%, #0f3460);
+    border-radius: 20px;
+    color: #e8e8ff;
+    box-shadow:
+        0 16px 40px rgba(15, 52, 96, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    position: relative;
+    overflow: hidden;
+}
+
+.blockchain-page-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.blockchain-page-header::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    left: -20%;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.blockchain-header-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.blockchain-header-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a5b4fc;
+    flex-shrink: 0;
+    animation: headerIconFloat 3s ease-in-out infinite;
+}
+
+@keyframes headerIconFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+.blockchain-page-header h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+}
+
+.blockchain-subtitle {
+    margin: 0;
+    font-size: 0.88rem;
+    color: rgba(232, 232, 255, 0.6);
+}
+
+.blockchain-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.blockchain-back-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(-2px);
+}
+
+/* =====================================================
+   Node Info Banner
+   ===================================================== */
+
+.blockchain-node-banner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 24px;
+    margin-bottom: 28px;
+    background: var(--dash-panel, #ffffff);
+    border-radius: 16px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    flex-wrap: wrap;
+}
+
+.node-banner-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.node-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--dash-muted, #5d7463);
+}
+
+.node-value {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--dash-ink, #152416);
+}
+
+.node-banner-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--dash-border, rgba(31, 59, 40, 0.1));
+    flex-shrink: 0;
+}
+
+.node-flow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem !important;
+}
+
+.node-active-label {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.node-arrow {
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.4;
+}
+
+/* =====================================================
+   Stats Grid
+   ===================================================== */
+
+.blockchain-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.bc-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 16px;
+    background: var(--dash-panel, #ffffff);
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bc-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.bc-stat-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.bc-stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bc-stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--dash-ink, #152416);
+    line-height: 1.1;
+}
+
+.bc-stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* =====================================================
+   Chains Section
+   ===================================================== */
+
+.blockchain-chains-section {
+    margin-bottom: 32px;
+}
+
+.blockchain-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--dash-ink, #152416);
+    margin: 0 0 20px;
+}
+
+.blockchain-section-title svg {
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.7;
+}
+
+/* Loading & Empty */
+.blockchain-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: var(--dash-muted, #5d7463);
+    font-size: 0.9rem;
+}
+
+.blockchain-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(99, 102, 241, 0.15);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: bcSpin 0.7s linear infinite;
+}
+
+@keyframes bcSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.blockchain-empty {
+    text-align: center;
+    padding: 48px 24px;
+    background: var(--dash-panel, #ffffff);
+    border-radius: 20px;
+    border: 2px dashed var(--dash-border, rgba(31, 59, 40, 0.12));
+}
+
+.blockchain-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.blockchain-empty h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dash-ink, #152416);
+    margin: 0 0 8px;
+}
+
+.blockchain-empty p {
+    font-size: 0.88rem;
+    color: var(--dash-muted, #5d7463);
+    margin: 0;
+    max-width: 400px;
+    margin-inline: auto;
+    line-height: 1.5;
+}
+
+/* =====================================================
+   Chain Cards (List)
+   ===================================================== */
+
+.blockchain-chain-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 18px;
+}
+
+.blockchain-chain-card {
+    background: var(--dash-panel, #ffffff);
+    border-radius: 18px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    overflow: hidden;
+}
+
+.blockchain-chain-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 36px rgba(15, 52, 96, 0.12);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.chain-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 12px;
+}
+
+.chain-card-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chain-code {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--dash-ink, #152416);
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+}
+
+.chain-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chain-blocks-count {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+    background: rgba(31, 59, 40, 0.06);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.chain-card-body {
+    padding: 0 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.chain-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.chain-meta-label {
+    font-size: 0.78rem;
+    color: var(--dash-muted, #5d7463);
+}
+
+.chain-meta-value {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dash-ink, #152416);
+}
+
+.chain-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: rgba(245, 243, 236, 0.4);
+    border-top: 1px solid var(--dash-border, rgba(31, 59, 40, 0.06));
+}
+
+.chain-hash-preview {
+    font-size: 0.72rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.7;
+}
+
+.chain-view-btn {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #6366f1;
+    transition: opacity 0.2s ease;
+}
+
+.blockchain-chain-card:hover .chain-view-btn {
+    opacity: 0.85;
+}
+
+/* =====================================================
+   Chain Detail View
+   ===================================================== */
+
+.blockchain-detail-view {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.chain-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 24px 28px;
+    background: var(--dash-panel, #ffffff);
+    border-radius: 18px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+}
+
+.chain-detail-info h2 {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin: 0 0 8px;
+    color: var(--dash-ink, #152416);
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+}
+
+.chain-detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--dash-muted, #5d7463);
+    flex-wrap: wrap;
+}
+
+.bc-validate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    transition: all 0.2s ease;
+}
+
+.bc-validate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(99, 102, 241, 0.4);
+}
+
+/* =====================================================
+   Validation Result
+   ===================================================== */
+
+.chain-validation-result {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border-radius: 16px;
+    animation: validationSlideIn 0.3s ease;
+}
+
+@keyframes validationSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chain-validation-result.valid {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.chain-validation-result.invalid {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.validation-icon {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+
+.validation-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.validation-info strong {
+    font-size: 0.95rem;
+    color: var(--dash-ink, #152416);
+}
+
+.validation-info p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--dash-muted, #5d7463);
+}
+
+.validation-info span {
+    font-size: 0.75rem;
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.7;
+}
+
+/* =====================================================
+   Blockchain Timeline
+   ===================================================== */
+
+.blockchain-visual-section {
+    background: var(--dash-panel, #ffffff);
+    border-radius: 20px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    padding: 28px;
+}
+
+.blockchain-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+}
+
+.timeline-item-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* Connector */
+.timeline-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 2px 0;
+    position: relative;
+}
+
+.connector-line {
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(to bottom, rgba(99, 102, 241, 0.3), rgba(99, 102, 241, 0.15));
+}
+
+.connector-hash {
+    position: absolute;
+    right: 16px;
+    font-size: 0.65rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.4;
+    letter-spacing: 0.02em;
+}
+
+/* Block Card */
+.timeline-block-card {
+    display: flex;
+    border-radius: 14px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    background: rgba(245, 243, 236, 0.35);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.timeline-block-card:hover {
+    border-color: var(--block-color, #6366f1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    background: rgba(245, 243, 236, 0.6);
+}
+
+.timeline-block-card.selected {
+    border-color: var(--block-color, #6366f1);
+    box-shadow: 0 6px 24px rgba(99, 102, 241, 0.12);
+    background: #fff;
+}
+
+.block-card-indicator {
+    width: 4px;
+    flex-shrink: 0;
+    border-radius: 4px 0 0 4px;
+}
+
+.block-card-content {
+    flex: 1;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.block-card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.block-icon {
+    font-size: 1.1rem;
+}
+
+.block-type-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.block-index {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+    background: rgba(31, 59, 40, 0.06);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.block-time {
+    font-size: 0.72rem;
+    color: var(--dash-muted, #5d7463);
+    margin-left: auto;
+}
+
+.block-summary {
+    font-size: 0.82rem;
+    color: var(--dash-ink, #152416);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.block-hash-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hash-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.6;
+}
+
+.hash-value {
+    font-size: 0.68rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    color: var(--dash-muted, #5d7463);
+    opacity: 0.7;
+}
+
+/* =====================================================
+   Block Expanded Detail
+   ===================================================== */
+
+.block-expanded {
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--dash-border, rgba(31, 59, 40, 0.08));
+    animation: blockExpandIn 0.25s ease;
+}
+
+@keyframes blockExpandIn {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+
+    to {
+        opacity: 1;
+        max-height: 800px;
+    }
+}
+
+.block-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.block-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    background: rgba(245, 243, 236, 0.5);
+    border-radius: 10px;
+    border: 1px solid rgba(31, 59, 40, 0.04);
+}
+
+.detail-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dash-muted, #5d7463);
+}
+
+.detail-value {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dash-ink, #152416);
+    word-break: break-all;
+}
+
+.hash-mono {
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+}
+
+.block-payload {
+    background: #1a1a2e;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.payload-title {
+    display: block;
+    padding: 10px 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(232, 232, 255, 0.5);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.payload-json {
+    padding: 16px;
+    margin: 0;
+    font-size: 0.78rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    color: #a5b4fc;
+    line-height: 1.6;
+    overflow-x: auto;
+    max-height: 300px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* =====================================================
+   End of Chain Marker
+   ===================================================== */
+
+.timeline-end-marker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 0 0;
+    margin-top: 8px;
+}
+
+.end-marker-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+.timeline-end-marker span {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+}
+
+/* =====================================================
+   Responsive
+   ===================================================== */
+
+@media (max-width: 1024px) {
+    .blockchain-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .unified-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .supply-chain-flow {
+        flex-direction: column;
+    }
+
+    .supply-chain-connector {
+        transform: rotate(90deg);
+        margin: -8px auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .blockchain-page {
+        padding: 0 0 40px;
+    }
+
+    .blockchain-page-header {
+        padding: 22px;
+        border-radius: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .blockchain-node-banner {
+        flex-direction: column;
+        gap: 14px;
+        padding: 18px;
+    }
+
+    .node-banner-divider {
+        width: 100%;
+        height: 1px;
+    }
+
+    .blockchain-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .unified-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .blockchain-chain-list {
+        grid-template-columns: 1fr;
+    }
+
+    .chain-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 20px;
+    }
+
+    .blockchain-visual-section {
+        padding: 18px;
+    }
+
+    .block-card-content {
+        padding: 12px 14px;
+    }
+
+    .block-detail-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .unified-filter-tabs {
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .unified-status-filters {
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .node-flow {
+        flex-wrap: wrap;
+        gap: 4px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .blockchain-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .bc-stat-card {
+        padding: 14px;
+    }
+
+    .bc-stat-value {
+        font-size: 1.2rem;
+    }
+
+    .block-card-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .block-time {
+        margin-left: 0;
+    }
+
+    .block-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .supply-chain-node {
+        min-width: auto;
+    }
+}
+
+/* =====================================================
+   UNIFIED BLOCKCHAIN MONITORING - Cross-Chain Styles
+   ===================================================== */
+
+/* Connection Status Dot */
+.node-connection-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    opacity: 0.3;
+    vertical-align: middle;
+}
+
+.node-connection-dot.connected {
+    opacity: 1;
+    animation: connectionPulse 2s ease-in-out infinite;
+}
+
+@keyframes connectionPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+    }
+
+    50% {
+        opacity: 0.8;
+        box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.2);
+    }
+}
+
+.node-flow-item {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+/* =====================================================
+   Filter Tabs
+   ===================================================== */
+
+.unified-filter-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding-bottom: 4px;
+    overflow-x: auto;
+}
+
+.filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.12));
+    background: var(--dash-panel, #ffffff);
+    color: var(--dash-muted, #5d7463);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-tab:hover:not(:disabled) {
+    border-color: var(--tab-color, var(--dash-muted, #5d7463));
+    background: rgba(31, 59, 40, 0.04);
+}
+
+.filter-tab.active {
+    background: var(--tab-color, #6366f1);
+    color: #fff;
+    border-color: var(--tab-color, #6366f1);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);
+}
+
+.filter-tab:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.filter-tab-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.08);
+    padding: 2px 8px;
+    border-radius: 999px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.filter-tab.active .filter-tab-count {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.filter-tab-offline {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 1px 6px;
+    border-radius: 999px;
+}
+
+/* =====================================================
+   Status Filters
+   ===================================================== */
+
+.unified-status-filters {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 18px;
+}
+
+.status-filter-btn {
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    background: transparent;
+    color: var(--dash-muted, #5d7463);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-filter-btn:hover {
+    border-color: var(--status-color, var(--dash-muted, #5d7463));
+    color: var(--status-color, var(--dash-ink, #152416));
+}
+
+.status-filter-btn.active {
+    background: var(--status-color, #6366f1);
+    color: #fff;
+    border-color: var(--status-color, #6366f1);
+}
+
+/* =====================================================
+   Unified Stats Grid
+   ===================================================== */
+
+.unified-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.unified-stat-section {
+    background: var(--dash-panel, #ffffff);
+    border-radius: 16px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.unified-stat-section:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.unified-stat-section.unified-stat-total {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.unified-stat-section.unified-stat-total .unified-stat-value,
+.unified-stat-section.unified-stat-total .unified-stat-label,
+.unified-stat-section.unified-stat-total .unified-stat-header {
+    color: rgba(232, 232, 255, 0.85);
+}
+
+.unified-stat-section.unified-stat-total .unified-stat-value {
+    color: #fff;
+}
+
+.unified-stat-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--dash-ink, #152416);
+    border-left: 4px solid transparent;
+}
+
+.unified-stat-node-icon {
+    font-size: 1.1rem;
+}
+
+.unified-stat-connection {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-left: auto;
+}
+
+.unified-stat-connection.connected {
+    color: #10b981;
+}
+
+.unified-stat-connection.disconnected {
+    color: #ef4444;
+}
+
+.unified-stat-row {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px 16px;
+}
+
+.unified-stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: 10px;
+    background: rgba(31, 59, 40, 0.03);
+}
+
+.unified-stat-section.unified-stat-total .unified-stat-item {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.unified-stat-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--dash-ink, #152416);
+    line-height: 1.1;
+}
+
+.unified-stat-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* =====================================================
+   Chain Card - Node Badge
+   ===================================================== */
+
+.chain-card-node-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    margin: 14px 18px 0;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    width: fit-content;
+}
+
+.blockchain-chain-card {
+    border-left: 4px solid var(--chain-node-color, transparent);
+}
+
+/* =====================================================
+   Supply Chain Flow Visualization
+   ===================================================== */
+
+.supply-chain-flow {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0;
+    padding: 24px;
+    background: var(--dash-panel, #ffffff);
+    border-radius: 18px;
+    border: 1px solid var(--dash-border, rgba(31, 59, 40, 0.1));
+}
+
+.supply-chain-flow-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.supply-chain-connector {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+}
+
+.supply-chain-arrow {
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4));
+    position: relative;
+}
+
+.supply-chain-arrow::after {
+    content: '→';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    color: rgba(99, 102, 241, 0.6);
+}
+
+.supply-chain-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 20px;
+    min-width: 150px;
+    border-radius: 16px;
+    border: 2px solid rgba(107, 114, 128, 0.15);
+    background: rgba(245, 243, 236, 0.3);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.supply-chain-node.active {
+    border-color: var(--node-color, #6366f1);
+    background: rgba(245, 243, 236, 0.6);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.supply-chain-node.inactive {
+    opacity: 0.5;
+}
+
+.supply-chain-node-icon {
+    font-size: 1.8rem;
+}
+
+.supply-chain-node-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.supply-chain-node-label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--dash-ink, #152416);
+}
+
+.supply-chain-node-id {
+    font-size: 0.72rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    color: var(--dash-muted, #5d7463);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.supply-chain-node-blocks {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+}
+
+.supply-chain-node-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* =====================================================
+   Block Node Badge (in timeline)
+   ===================================================== */
+
+.block-node-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* =====================================================
+   Node Transition Marker (in unified timeline)
+   ===================================================== */
+
+.timeline-node-transition {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+    position: relative;
+}
+
+.node-transition-line {
+    flex: 1;
+    height: 2px;
+    background: repeating-linear-gradient(90deg,
+            rgba(99, 102, 241, 0.3) 0px,
+            rgba(99, 102, 241, 0.3) 6px,
+            transparent 6px,
+            transparent 12px);
+}
+
+.node-transition-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* =====================================================
+   Timeline Block Total Badge
+   ===================================================== */
+
+.timeline-block-total {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dash-muted, #5d7463);
+    background: rgba(31, 59, 40, 0.06);
+    padding: 3px 12px;
+    border-radius: 999px;
+    margin-left: auto;
+}

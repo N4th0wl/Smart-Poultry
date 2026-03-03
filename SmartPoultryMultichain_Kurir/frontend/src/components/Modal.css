@@ -1,0 +1,130 @@
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 20, 42, 0.55);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeIn .15s;
+}
+
+.modal-container {
+    background: linear-gradient(165deg, #ffffff 0%, #f4f8fd 100%);
+    border: 1px solid rgba(26, 58, 107, 0.15);
+    border-radius: 20px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: slideUp .2s;
+    box-shadow: 0 30px 60px rgba(13, 27, 62, 0.2);
+}
+
+.modal-sm {
+    max-width: 420px;
+}
+
+.modal-md {
+    max-width: 560px;
+}
+
+.modal-lg {
+    max-width: 720px;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(26, 58, 107, 0.1);
+}
+
+.modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0d1b3e;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #5a7aaa;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all .15s;
+}
+
+.modal-close:hover {
+    background: rgba(26, 58, 107, 0.08);
+    color: #0d1b3e;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 16px;
+    font-size: .85rem;
+    font-weight: 500;
+    color: #1a3a6b;
+}
+
+.modal-body input,
+.modal-body select,
+.modal-body textarea {
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 14px;
+    border: 1px solid rgba(26, 58, 107, 0.2);
+    border-radius: 10px;
+    background: #eef3fb;
+    color: #0d1b3e;
+    font-family: inherit;
+    font-size: .9rem;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.modal-body input:focus,
+.modal-body select:focus,
+.modal-body textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: #ffffff;
+}
+
+.modal-body .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

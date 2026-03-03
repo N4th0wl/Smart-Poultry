@@ -1,0 +1,8 @@
+/* ============================================ */
+/* TOAST STYLES - Blue Theme for Kurir */
+/* ============================================ */
+
+.toast-custom {
+    backdrop-filter: blur(12px);
+    border-radius: 16px !important;
+}

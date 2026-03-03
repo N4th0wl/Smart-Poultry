@@ -1,0 +1,49 @@
+/* Settings Styles - Light Blue Theme */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 20px;
+}
+
+.settings-form label {
+    display: block;
+    margin-bottom: 16px;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #1a3a6b;
+}
+
+.settings-form input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 14px;
+    border: 1px solid rgba(26, 58, 107, 0.2);
+    border-radius: 10px;
+    background: #eef3fb;
+    color: #0d1b3e;
+    font-family: inherit;
+    font-size: .9rem;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.settings-form input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: #ffffff;
+}
+
+.settings-form input:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.settings-form .solid-button {
+    margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}

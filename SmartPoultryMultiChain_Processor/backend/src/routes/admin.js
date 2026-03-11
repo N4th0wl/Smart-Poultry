@@ -107,6 +107,7 @@ router.get('/processors/:id', async (req, res) => {
 });
 
 // POST /api/admin/processors - Create new processor with initial admin user
+// SINGLE PROCESSOR: Sistem hanya mendukung 1 processor
 router.post('/processors', async (req, res) => {
     const t = await sequelize.transaction();
     try {
@@ -115,6 +116,15 @@ router.post('/processors', async (req, res) => {
         if (!namaProcessor || !email || !password) {
             await t.rollback();
             return res.status(400).json({ message: 'Nama processor, email, dan password wajib diisi' });
+        }
+
+        // Single Processor: check if a processor already exists
+        const existingProcessorCount = await Processor.count({ transaction: t });
+        if (existingProcessorCount >= 1) {
+            await t.rollback();
+            return res.status(400).json({ 
+                message: 'Sistem hanya mendukung 1 Processor. Processor sudah terdaftar dalam sistem.' 
+            });
         }
 
         // Check duplicate email

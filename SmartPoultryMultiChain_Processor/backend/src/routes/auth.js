@@ -48,13 +48,19 @@ router.post('/register', async (req, res) => {
         let processorName = namaProcessor;
 
         if (role === 'KARYAWAN') {
-            // Non-admin users: create a new processor for them
-            const kodeProcessor = await generateKodeProcessor(sequelize, t);
-            const processor = await Processor.create({
-                KodeProcessor: kodeProcessor,
-                NamaProcessor: namaProcessor,
-            }, { transaction: t });
-            processorId = processor.IdProcessor;
+            // Single Processor: assign to existing processor, or create one if none exists
+            const existingProcessor = await Processor.findOne({ transaction: t });
+            if (existingProcessor) {
+                processorId = existingProcessor.IdProcessor;
+                processorName = existingProcessor.NamaProcessor;
+            } else {
+                const kodeProcessor = await generateKodeProcessor(sequelize, t);
+                const processor = await Processor.create({
+                    KodeProcessor: kodeProcessor,
+                    NamaProcessor: namaProcessor,
+                }, { transaction: t });
+                processorId = processor.IdProcessor;
+            }
         }
 
         const user = await User.create({

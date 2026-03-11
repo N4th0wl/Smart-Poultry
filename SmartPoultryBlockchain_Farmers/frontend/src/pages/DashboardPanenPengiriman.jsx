@@ -31,9 +31,7 @@ function DashboardPanenPengiriman() {
     kodePanen: '',
     kodeKandang: '',
     kodeStaf: '',
-    tanggalPengiriman: '',
-    namaPerusahaanPengiriman: '',
-    alamatTujuan: ''
+    tanggalPengiriman: ''
   })
 
   useEffect(() => {
@@ -139,9 +137,7 @@ function DashboardPanenPengiriman() {
       kodePanen: '',
       kodeKandang: '',
       kodeStaf: '',
-      tanggalPengiriman: '',
-      namaPerusahaanPengiriman: '',
-      alamatTujuan: ''
+      tanggalPengiriman: ''
     })
     setEditing(null)
     setModalType('pengiriman')
@@ -153,9 +149,7 @@ function DashboardPanenPengiriman() {
       kodePanen: pengiriman.KodePanen,
       kodeKandang: pengiriman.KodeKandang,
       kodeStaf: pengiriman.KodeStaf || '',
-      tanggalPengiriman: pengiriman.TanggalPengiriman?.split('T')[0] || '',
-      namaPerusahaanPengiriman: pengiriman.NamaPerusahaanPengiriman || '',
-      alamatTujuan: pengiriman.AlamatTujuan || ''
+      tanggalPengiriman: pengiriman.TanggalPengiriman?.split('T')[0] || ''
     })
     setEditing(pengiriman)
     setModalType('pengiriman')
@@ -286,12 +280,7 @@ function DashboardPanenPengiriman() {
     },
     {
       key: 'NamaPerusahaanPengiriman',
-      label: 'Perusahaan Tujuan',
-      render: (val) => val || '-'
-    },
-    {
-      key: 'AlamatTujuan',
-      label: 'Alamat Tujuan',
+      label: 'Tujuan Processor',
       render: (val) => val || '-'
     },
     {
@@ -519,23 +508,17 @@ function DashboardPanenPengiriman() {
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Nama Perusahaan Tujuan</label>
-            <input
-              type="text"
-              value={pengirimanForm.namaPerusahaanPengiriman}
-              onChange={(e) => setPengirimanForm({ ...pengirimanForm, namaPerusahaanPengiriman: e.target.value })}
-              placeholder="Nama perusahaan penerima"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Alamat Tujuan</label>
-            <textarea
-              value={pengirimanForm.alamatTujuan}
-              onChange={(e) => setPengirimanForm({ ...pengirimanForm, alamatTujuan: e.target.value })}
-              placeholder="Alamat lengkap tujuan pengiriman"
-            />
+          {/* Static Processor Destination Info */}
+          <div className="form-group" style={{ 
+            background: 'rgba(59, 130, 246, 0.08)', 
+            padding: '12px 16px', 
+            borderRadius: '8px',
+            border: '1px solid rgba(59, 130, 246, 0.2)'
+          }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#3b82f6', marginBottom: '4px', display: 'block' }}>📍 Tujuan Pengiriman (Processor)</label>
+            <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#475569' }}>
+              Pengiriman akan otomatis dikirim ke <strong>Processor</strong> yang terdaftar dalam sistem.
+            </p>
           </div>
 
           <div className="modal-actions">

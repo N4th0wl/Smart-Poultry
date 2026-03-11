@@ -4,6 +4,11 @@ const { Panen, Pengiriman, NotaPengiriman, Kandang, Staf, sequelize } = require(
 const { authMiddleware } = require('../middleware/auth');
 const { generateKodePanen, generateKodePengiriman, generateKodeNotaPengiriman } = require('../utils/codeGenerator');
 const blockchain = require('../utils/blockchainHelper');
+require('dotenv').config();
+
+// Single Processor Configuration
+const PROCESSOR_NAME = process.env.PROCESSOR_NAME || 'Processor';
+const PROCESSOR_ADDRESS = process.env.PROCESSOR_ADDRESS || '';
 
 router.use(authMiddleware);
 
@@ -95,6 +100,7 @@ router.get('/pengiriman/:id', async (req, res) => {
 
 // POST /api/panen/pengiriman - Create pengiriman
 // Automatically creates NotaPengiriman with estimated reception date (+1 day)
+// Tujuan pengiriman otomatis diisi ke single Processor (konfigurasi .env)
 router.post('/pengiriman', async (req, res) => {
     let transaction;
     try {
@@ -104,9 +110,7 @@ router.post('/pengiriman', async (req, res) => {
             kodePanen,
             kodeKandang,
             kodeStaf,
-            tanggalPengiriman,
-            namaPerusahaanPengiriman,
-            alamatTujuan
+            tanggalPengiriman
         } = req.body;
 
         if (!kodePanen || !kodeKandang || !kodeStaf || !tanggalPengiriman) {
@@ -134,15 +138,15 @@ router.post('/pengiriman', async (req, res) => {
         const kodePengiriman = await generateKodePengiriman(sequelize, transaction);
         const kodeNotaPengiriman = await generateKodeNotaPengiriman(sequelize, transaction);
 
-        // Create Pengiriman
+        // Create Pengiriman — tujuan otomatis ke single Processor
         const pengiriman = await Pengiriman.create({
             KodePengiriman: kodePengiriman,
             KodePanen: kodePanen,
             KodeKandang: kodeKandang,
             KodeStaf: kodeStaf,
             TanggalPengiriman: tanggalPengiriman,
-            NamaPerusahaanPengiriman: namaPerusahaanPengiriman || null,
-            AlamatTujuan: alamatTujuan || null
+            NamaPerusahaanPengiriman: PROCESSOR_NAME,
+            AlamatTujuan: PROCESSOR_ADDRESS
         }, { transaction });
 
         // Calculate estimated reception date: TanggalPengiriman + 1 day
@@ -167,8 +171,8 @@ router.post('/pengiriman', async (req, res) => {
                 kodePengiriman: kodePengiriman,
                 kodePanen: kodePanen,
                 tanggalPenerimaan: tanggalPenerimaan,
-                perusahaanPengiriman: namaPerusahaanPengiriman,
-                alamatTujuan: alamatTujuan,
+                perusahaanPengiriman: PROCESSOR_NAME,
+                alamatTujuan: PROCESSOR_ADDRESS,
                 transaction
             });
         } catch (bcError) {
@@ -192,7 +196,7 @@ router.post('/pengiriman', async (req, res) => {
 router.put('/pengiriman/:id', async (req, res) => {
     try {
         const kodePeternakan = req.user.kodePeternakan;
-        const { tanggalPengiriman, namaPerusahaanPengiriman, alamatTujuan, kodeStaf } = req.body;
+        const { tanggalPengiriman, kodeStaf } = req.body;
 
         // Verify pengiriman belongs to this peternakan
         const [ownership] = await sequelize.query(`
@@ -213,8 +217,8 @@ router.put('/pengiriman/:id', async (req, res) => {
 
         await pengiriman.update({
             TanggalPengiriman: tanggalPengiriman || pengiriman.TanggalPengiriman,
-            NamaPerusahaanPengiriman: namaPerusahaanPengiriman ?? pengiriman.NamaPerusahaanPengiriman,
-            AlamatTujuan: alamatTujuan ?? pengiriman.AlamatTujuan,
+            NamaPerusahaanPengiriman: PROCESSOR_NAME,
+            AlamatTujuan: PROCESSOR_ADDRESS,
             KodeStaf: kodeStaf || pengiriman.KodeStaf
         });
 

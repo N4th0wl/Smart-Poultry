@@ -119,10 +119,16 @@ function AdminPanelProcessor() {
                     <div className="admin-header-icon">🏭</div>
                     <div>
                         <h1 id="admin-processors-title">Panel Processor</h1>
-                        <p className="admin-subtitle">Manajemen unit pengolahan terdaftar</p>
+                        <p className="admin-subtitle">Sistem mendukung 1 unit pengolahan (Single Processor)</p>
                     </div>
                 </div>
-                <button className="admin-create-btn" onClick={handleCreate}>
+                <button 
+                    className="admin-create-btn" 
+                    onClick={handleCreate}
+                    disabled={processors.length >= 1}
+                    title={processors.length >= 1 ? 'Sistem hanya mendukung 1 Processor' : 'Tambah Processor'}
+                    style={processors.length >= 1 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
@@ -130,6 +136,25 @@ function AdminPanelProcessor() {
                     Tambah Processor
                 </button>
             </div>
+
+            {/* Single Processor Notice */}
+            {processors.length >= 1 && (
+                <div style={{ 
+                    background: 'rgba(59, 130, 246, 0.08)', 
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: '10px',
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '0.85rem',
+                    color: 'var(--ink-soft, #475569)'
+                }}>
+                    <span style={{ fontSize: '1.2rem' }}>ℹ️</span>
+                    <span>Sistem hanya mendukung <strong>1 Processor</strong>. Processor sudah terdaftar dalam sistem.</span>
+                </div>
+            )}
 
             {/* Search Bar */}
             <div className="admin-search-container">

@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
-const { sequelize, Order, Produksi, Pengiriman, Karyawan, TugasProduksi, BlockchainIdentity, LedgerProcessor } = require('./src/models');
+const { sequelize, Order, Produksi, Pengiriman, Karyawan, TugasProduksi, BlockchainIdentity, LedgerProcessor, CodeCounter } = require('./src/models');
 
 // Route imports
 const authRoutes = require('./src/routes/auth');
@@ -116,6 +116,20 @@ app.use('/api/nota', notaRoutes);
 app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/qr-trace', qrTraceRoutes);
 
+// Auto-seed CodeCounter table if empty
+async function seedCodeCounters() {
+    const { CODE_CONFIG } = require('./src/utils/codeGenerator');
+    const entityNames = Object.keys(CODE_CONFIG);
+    
+    for (const entityName of entityNames) {
+        await CodeCounter.findOrCreate({
+            where: { EntityName: entityName },
+            defaults: { EntityName: entityName, LastCounter: 0 },
+        });
+    }
+    console.log('✅ CodeCounter seeded');
+}
+
 // Start server
 async function startServer() {
     try {
@@ -123,6 +137,9 @@ async function startServer() {
         console.log('✅ Database connected successfully');
         await sequelize.sync({ alter: false });
         console.log('✅ Models synchronized');
+
+        // Auto-seed CodeCounter
+        await seedCodeCounters();
 
         app.listen(PORT, () => {
             console.log(`🚀 SmartPoultry Processor API running on port ${PORT}`);

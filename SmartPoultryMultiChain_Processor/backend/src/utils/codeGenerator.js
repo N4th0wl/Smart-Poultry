@@ -38,22 +38,24 @@ async function generateCode(sequelize, entityName, transaction) {
         throw new Error(`Unknown entity: ${entityName}`);
     }
 
-    // Atomically increment counter and get new value
+    // Upsert: insert the row if it doesn't exist, then atomically increment
     await sequelize.query(
-        `UPDATE CodeCounter SET LastCounter = LastCounter + 1 WHERE EntityName = :entityName`,
-        { replacements: { entityName }, type: sequelize.QueryTypes.UPDATE, transaction }
+        `INSERT INTO CodeCounter (EntityName, LastCounter) VALUES (:entityName, 1)
+         ON DUPLICATE KEY UPDATE LastCounter = LastCounter + 1`,
+        { replacements: { entityName }, type: sequelize.QueryTypes.INSERT, transaction }
     );
 
-    const [rows] = await sequelize.query(
+    const results = await sequelize.query(
         `SELECT LastCounter FROM CodeCounter WHERE EntityName = :entityName`,
         { replacements: { entityName }, type: sequelize.QueryTypes.SELECT, transaction }
     );
 
-    if (!rows || rows.LastCounter === undefined) {
+    const row = results[0];
+    if (!row || row.LastCounter === undefined) {
         throw new Error(`CodeCounter not found for entity: ${entityName}`);
     }
 
-    const counter = rows.LastCounter;
+    const counter = row.LastCounter;
     return `${config.prefix}-${String(counter).padStart(9, '0')}`;
 }
 

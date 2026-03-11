@@ -11,19 +11,29 @@ export default function Orders() {
     const [showTerimaModal, setShowTerimaModal] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
     const [loading, setLoading] = useState(false)
+    const [processorInfo, setProcessorInfo] = useState({ namaProcessor: '', alamatProcessor: '', kontakProcessor: '' })
     const [form, setForm] = useState({
-        namaProcessor: '', alamatProcessor: '', kontakProcessor: '',
         namaProduk: '', jenisProduk: '', jumlahPesanan: '', satuan: 'KG',
         tanggalDibutuhkan: '', hargaSatuan: '', catatan: ''
     })
     const [terimaForm, setTerimaForm] = useState({ penerimaOrder: '', jumlahDiterima: '', kondisiTerima: '', kodeOrderProcessor: '', processorLastBlockHash: '' })
 
-    useEffect(() => { loadOrders() }, [])
+    useEffect(() => {
+        loadOrders()
+        loadProcessorInfo()
+    }, [])
 
     async function loadOrders() {
         try {
             const res = await apiClient.get('/orders')
             setOrders(res.data.data)
+        } catch { /* noop */ }
+    }
+
+    async function loadProcessorInfo() {
+        try {
+            const res = await apiClient.get('/orders/processor-info')
+            setProcessorInfo(res.data.data)
         } catch { /* noop */ }
     }
 
@@ -37,7 +47,7 @@ export default function Orders() {
             await apiClient.post('/orders', { ...form, jumlahPesanan: Number(form.jumlahPesanan), hargaSatuan: Number(form.hargaSatuan) })
             showToast({ title: 'Berhasil', description: 'Order berhasil dibuat.', status: 'success' })
             setShowModal(false)
-            setForm({ namaProcessor: '', alamatProcessor: '', kontakProcessor: '', namaProduk: '', jenisProduk: '', jumlahPesanan: '', satuan: 'KG', tanggalDibutuhkan: '', hargaSatuan: '', catatan: '' })
+            setForm({ namaProduk: '', jenisProduk: '', jumlahPesanan: '', satuan: 'KG', tanggalDibutuhkan: '', hargaSatuan: '', catatan: '' })
             loadOrders()
         } catch (err) {
             showToast({ title: 'Gagal', description: err.response?.data?.message || 'Gagal membuat order.', status: 'error' })
@@ -102,12 +112,38 @@ export default function Orders() {
             {/* Create Modal */}
             <Modal open={showModal} onClose={() => setShowModal(false)} title="Buat Order Baru">
                 <form className="sp-form" onSubmit={onSubmit}>
+                    {/* Single Processor Info Banner */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, #E8F5E9, #F1F8E9)',
+                        borderRadius: 12,
+                        padding: '14px 18px',
+                        marginBottom: 18,
+                        border: '1px solid rgba(13,92,62,0.12)',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 12
+                    }}>
+                        <div style={{
+                            width: 38, height: 38, borderRadius: 10,
+                            background: 'linear-gradient(135deg, #0D5C3E, #1A8A5C)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '1.1rem', flexShrink: 0, color: '#fff'
+                        }}>🏭</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0D5C3E', marginBottom: 2 }}>Processor Pemasok</div>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1B4332' }}>{processorInfo.namaProcessor || 'Memuat...'}</div>
+                            {processorInfo.alamatProcessor && (
+                                <div style={{ fontSize: '0.82rem', color: '#6B7B74', marginTop: 2 }}>📍 {processorInfo.alamatProcessor}</div>
+                            )}
+                            {processorInfo.kontakProcessor && (
+                                <div style={{ fontSize: '0.82rem', color: '#6B7B74', marginTop: 1 }}>📞 {processorInfo.kontakProcessor}</div>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="sp-formGrid">
-                        <label className="sp-field"><span className="sp-label">Nama Processor</span><input className="sp-input" value={form.namaProcessor} onChange={handleChange('namaProcessor')} required /></label>
-                        <label className="sp-field"><span className="sp-label">Kontak</span><input className="sp-input" value={form.kontakProcessor} onChange={handleChange('kontakProcessor')} /></label>
-                        <label className="sp-field sp-fieldFull"><span className="sp-label">Alamat Processor</span><input className="sp-input" value={form.alamatProcessor} onChange={handleChange('alamatProcessor')} /></label>
-                        <label className="sp-field"><span className="sp-label">Nama Produk</span><input className="sp-input" value={form.namaProduk} onChange={handleChange('namaProduk')} required /></label>
-                        <label className="sp-field"><span className="sp-label">Jenis Produk</span><input className="sp-input" value={form.jenisProduk} onChange={handleChange('jenisProduk')} required placeholder="Ayam Potong, Fillet, dll" /></label>
+                        <label className="sp-field"><span className="sp-label">Nama Produk</span><input className="sp-input" value={form.namaProduk} onChange={handleChange('namaProduk')} required placeholder="Ayam Potong, Fillet, dll" /></label>
+                        <label className="sp-field"><span className="sp-label">Jenis Produk</span><input className="sp-input" value={form.jenisProduk} onChange={handleChange('jenisProduk')} required placeholder="Ayam Utuh, Paha, Dada, dll" /></label>
                         <label className="sp-field"><span className="sp-label">Jumlah</span><input className="sp-input" type="number" value={form.jumlahPesanan} onChange={handleChange('jumlahPesanan')} required min="1" /></label>
                         <label className="sp-field"><span className="sp-label">Satuan</span><select className="sp-input" value={form.satuan} onChange={handleChange('satuan')}><option>KG</option><option>PCS</option><option>PACK</option><option>BOX</option></select></label>
                         <label className="sp-field"><span className="sp-label">Harga Satuan</span><input className="sp-input" type="number" value={form.hargaSatuan} onChange={handleChange('hargaSatuan')} /></label>

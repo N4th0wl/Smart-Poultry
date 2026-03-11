@@ -20,20 +20,35 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-// POST /api/orders — create new order to processor
+// GET /api/orders/processor-info — get single processor info
+router.get('/processor-info', authMiddleware, (req, res) => {
+    res.json({
+        data: {
+            namaProcessor: process.env.PROCESSOR_NAME || 'PT Ayam Potong SmartPoultry',
+            alamatProcessor: process.env.PROCESSOR_ADDRESS || 'Jl. Industri No. 1, Jakarta',
+            kontakProcessor: process.env.PROCESSOR_CONTACT || '',
+        }
+    });
+});
+
+// POST /api/orders — create new order to the single processor
 router.post('/', authMiddleware, async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const {
-            namaProcessor, alamatProcessor, kontakProcessor,
             namaProduk, jenisProduk, jumlahPesanan, satuan,
             tanggalDibutuhkan, hargaSatuan, catatan
         } = req.body;
 
-        if (!namaProcessor || !namaProduk || !jenisProduk || !jumlahPesanan || !tanggalDibutuhkan) {
+        if (!namaProduk || !jenisProduk || !jumlahPesanan || !tanggalDibutuhkan) {
             await t.rollback();
             return res.status(400).json({ message: 'Data order tidak lengkap.' });
         }
+
+        // Use single processor from environment variables
+        const namaProcessor = process.env.PROCESSOR_NAME || 'PT Ayam Potong SmartPoultry';
+        const alamatProcessor = process.env.PROCESSOR_ADDRESS || 'Jl. Industri No. 1, Jakarta';
+        const kontakProcessor = process.env.PROCESSOR_CONTACT || '';
 
         const kodeOrder = await generateKodeOrder(sequelize, t);
         const totalHarga = (jumlahPesanan || 0) * (hargaSatuan || 0);
@@ -42,8 +57,8 @@ router.post('/', authMiddleware, async (req, res) => {
             KodeOrder: kodeOrder,
             IdRetailer: req.user.idRetailer,
             NamaProcessor: namaProcessor,
-            AlamatProcessor: alamatProcessor || null,
-            KontakProcessor: kontakProcessor || null,
+            AlamatProcessor: alamatProcessor,
+            KontakProcessor: kontakProcessor,
             NamaProduk: namaProduk,
             JenisProduk: jenisProduk,
             JumlahPesanan: jumlahPesanan,

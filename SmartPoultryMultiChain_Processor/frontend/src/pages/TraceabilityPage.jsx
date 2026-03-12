@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
 // ============================================================================
 // ICONS (inline SVG for zero dependencies)
@@ -334,6 +334,101 @@ export default function TraceabilityPage() {
                                     </div>
                                 </div>
 
+                                {/* Farm Care: Feeding Data */}
+                                {data.farmCare?.feeding?.length > 0 && (
+                                    <div className="trace-info-card">
+                                        <div className="trace-info-card-header" style={{ '--card-accent': '#f59e0b' }}>
+                                            <span className="trace-info-card-icon" style={{ fontSize: '1.2rem' }}>🌾</span>
+                                            <h3>Pakan Ayam</h3>
+                                        </div>
+                                        <div className="trace-info-card-body">
+                                            <div className="trace-info-row">
+                                                <span className="trace-info-label">Jenis Pakan</span>
+                                                <span className="trace-info-value">
+                                                    {data.farmCare.summary.feedTypes.join(', ')}
+                                                </span>
+                                            </div>
+                                            {data.farmCare.feeding.map((f, i) => (
+                                                <div key={i} style={{ background: 'rgba(245, 158, 11, 0.06)', borderRadius: 8, padding: '8px 12px', marginTop: 8 }}>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Nama Pakan</span>
+                                                        <span className="trace-info-value">{f.namaPakan}</span>
+                                                    </div>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Jumlah</span>
+                                                        <span className="trace-info-value">{f.jumlah} {f.satuan}</span>
+                                                    </div>
+                                                    <div className="trace-info-row">
+                                                        <span className="trace-info-label">Tanggal</span>
+                                                        <span className="trace-info-value">{formatDate(f.tanggal)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div style={{ marginTop: 10, fontSize: '0.75rem', color: '#92856a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span>📋</span>
+                                                <span>Total {data.farmCare.summary.totalFeeding} catatan pemberian pakan</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Farm Care: Medication Data */}
+                                {data.farmCare?.medication?.length > 0 && (
+                                    <div className="trace-info-card">
+                                        <div className="trace-info-card-header" style={{ '--card-accent': '#ef4444' }}>
+                                            <span className="trace-info-card-icon" style={{ fontSize: '1.2rem' }}>💊</span>
+                                            <h3>Riwayat Obat</h3>
+                                        </div>
+                                        <div className="trace-info-card-body">
+                                            {data.farmCare.summary.usesAntibiotics && (
+                                                <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem' }}>
+                                                    <span>⚠️</span>
+                                                    <span style={{ color: '#dc2626', fontWeight: 600 }}>Menggunakan Antibiotik</span>
+                                                </div>
+                                            )}
+                                            <div className="trace-info-row">
+                                                <span className="trace-info-label">Jenis Obat</span>
+                                                <span className="trace-info-value">
+                                                    {data.farmCare.summary.medicationTypes.join(', ')}
+                                                </span>
+                                            </div>
+                                            {data.farmCare.medication.map((m, i) => (
+                                                <div key={i} style={{ background: 'rgba(239, 68, 68, 0.04)', borderRadius: 8, padding: '8px 12px', marginTop: 8 }}>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Nama Obat</span>
+                                                        <span className="trace-info-value">{m.namaObat}</span>
+                                                    </div>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Jenis</span>
+                                                        <span className={`trace-badge ${m.jenisObat?.toLowerCase().includes('antibiotik') ? 'warning' : 'info'}`}>
+                                                            {m.jenisObat}
+                                                        </span>
+                                                    </div>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Dosis</span>
+                                                        <span className="trace-info-value">{m.dosis}</span>
+                                                    </div>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Jumlah</span>
+                                                        <span className="trace-info-value">{m.jumlah} {m.satuan}</span>
+                                                    </div>
+                                                    <div className="trace-info-row" style={{ marginBottom: 2 }}>
+                                                        <span className="trace-info-label">Tanggal Pakai</span>
+                                                        <span className="trace-info-value">{formatDate(m.tanggal)}</span>
+                                                    </div>
+                                                    <div className="trace-info-row">
+                                                        <span className="trace-info-label">Kadaluarsa</span>
+                                                        <span className="trace-info-value">{formatDate(m.kadaluarsa)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div style={{ marginTop: 10, fontSize: '0.75rem', color: '#92856a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span>📋</span>
+                                                <span>Total {data.farmCare.summary.totalMedication} catatan pemakaian obat</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 {data.production && (
                                     <div className="trace-info-card">
                                         <div className="trace-info-card-header" style={{ '--card-accent': '#8b5cf6' }}>

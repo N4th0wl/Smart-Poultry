@@ -4,6 +4,9 @@ const { authMiddleware } = require('../middleware/auth');
 const { Pengiriman, BuktiTandaTerima, NotaPengirimanKurir, Kurir, sequelize } = require('../models');
 const { generateKodePengiriman, generateKodeBukti, generateKodeNota } = require('../utils/codeGenerator');
 const blockchain = require('../utils/blockchainHelper');
+const { getPeternakanConnection } = require('../config/peternakanDatabase');
+const { getProcessorConnection } = require('../config/crossChainDatabase');
+const { Sequelize } = require('sequelize');
 
 // ============================================
 // PENGIRIMAN (Shipment) ROUTES
@@ -25,6 +28,155 @@ router.get('/', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Get pengiriman error:', error);
         res.status(500).json({ error: 'Failed to get shipments' });
+    }
+});
+
+// ============================================
+// INCOMING SHIPMENTS (AUTO-IMPORT)
+// ============================================
+
+// GET /api/pengiriman/incoming - Get incoming shipments from Farm and Processor
+router.get('/incoming', authMiddleware, async (req, res) => {
+    try {
+        const incoming = [];
+        
+        // Get existing downstream KodePengiriman/ReferensiEksternal to filter them out
+        const existingPengiriman = await Pengiriman.findAll({
+            attributes: ['ReferensiEksternal', 'KodePengiriman'],
+            where: { KodePerusahaan: req.user.kodePerusahaan }
+        });
+        const existingRefs = existingPengiriman.map(p => p.ReferensiEksternal).filter(Boolean);
+        const existingKodes = existingPengiriman.map(p => p.KodePengiriman).filter(Boolean);
+
+        // 1. Get from Peternakan (FARM_TO_PROCESSOR)
+        try {
+            const farmConn = getPeternakanConnection();
+            const farmShipments = await farmConn.query(
+                `SELECT pg.KodePengiriman, pg.TanggalPengiriman, pg.NamaPerusahaanPengiriman, pg.AlamatTujuan, k.KodeCycle, p.NamaPeternakan
+                 FROM Pengiriman pg
+                 JOIN Kandang k ON pg.KodeKandang = k.KodeKandang
+                 JOIN Peternakan p ON k.KodePeternakan = p.KodePeternakan`,
+                { type: Sequelize.QueryTypes.SELECT }
+            );
+
+            for (const ship of farmShipments) {
+                if (!existingRefs.includes(ship.KodePengiriman) && !existingKodes.includes(ship.KodePengiriman)) {
+                    incoming.push({
+                        id: ship.KodePengiriman,
+                        tipePengiriman: 'FARM_TO_PROCESSOR',
+                        asalPengirim: ship.NamaPeternakan || 'Peternakan',
+                        tujuanPenerima: ship.NamaPerusahaanPengiriman || 'Processor',
+                        alamatTujuan: ship.AlamatTujuan || '',
+                        tanggal: ship.TanggalPengiriman,
+                        upstreamCycleId: ship.KodeCycle
+                    });
+                }
+            }
+        } catch(e) { console.warn('Farm DB cross connect failed for incoming', e.message); }
+
+        // 2. Get from Processor (PROCESSOR_TO_RETAILER)
+        try {
+            const procConn = getProcessorConnection();
+            const procShipments = await procConn.query(
+                `SELECT pg.KodePengiriman, pg.TujuanPengiriman, pg.NamaPenerima, pg.TanggalKirim,
+                        pg.JumlahKirim, pg.BeratKirim, pg.StatusPengiriman,
+                        pr.IdOrder, pr.KodeProduksi, pr.JenisAyam,
+                        o.KodeOrder, o.NamaProcessor, o.NamaPeternakan,
+                        bi.KodeCycleFarm, bi.LatestBlockHash AS ProcessorLastBlockHash
+                 FROM pengiriman pg
+                 LEFT JOIN produksi pr ON pg.IdProduksi = pr.IdProduksi
+                 LEFT JOIN orders o ON pr.IdOrder = o.IdOrder
+                 LEFT JOIN blockchainidentity bi ON bi.IdOrder = o.IdOrder AND bi.StatusChain IN ('ACTIVE', 'COMPLETED')
+                 WHERE pg.StatusPengiriman IN ('DISIAPKAN', 'DIKIRIM')`,
+                { type: Sequelize.QueryTypes.SELECT }
+            );
+
+            for (const ship of procShipments) {
+                if (!existingRefs.includes(ship.KodePengiriman) && !existingKodes.includes(ship.KodePengiriman)) {
+                    incoming.push({
+                        id: ship.KodePengiriman,
+                        tipePengiriman: 'PROCESSOR_TO_RETAILER',
+                        asalPengirim: ship.NamaProcessor || 'Processor',
+                        tujuanPenerima: ship.NamaPenerima || 'Retailer',
+                        alamatTujuan: ship.TujuanPengiriman || '',
+                        tanggal: ship.TanggalKirim,
+                        referensiEksternal: ship.KodePengiriman,
+                        upstreamCycleId: ship.IdOrder,
+                        // Additional details for proper blockchain linking
+                        jumlahKirim: ship.JumlahKirim,
+                        beratKirim: ship.BeratKirim,
+                        jenisAyam: ship.JenisAyam,
+                        kodeOrder: ship.KodeOrder,
+                        kodeCycleFarm: ship.KodeCycleFarm,
+                        processorLastBlockHash: ship.ProcessorLastBlockHash,
+                        keterangan: `Pengiriman ${ship.JumlahKirim || '?'} ekor ${ship.JenisAyam || 'ayam'} ke ${ship.NamaPenerima || 'Retailer'}`
+                    });
+                }
+            }
+        } catch(e) { console.warn('Processor DB cross connect failed for incoming', e.message); }
+
+        res.json(incoming);
+    } catch (error) {
+        console.error('Get incoming pengiriman error:', error);
+        res.status(500).json({ error: 'Failed to get incoming shipments' });
+    }
+});
+
+// POST /api/pengiriman/import - Import shipment from upstream
+router.post('/import', authMiddleware, async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { id, tipePengiriman, asalPengirim, tujuanPenerima, alamatTujuan, tanggal, kodeKurir, upstreamCycleId, processorLastBlockHash, kodeCycleFarm, keterangan } = req.body;
+
+        if (!id || !kodeKurir || !tipePengiriman) {
+            return res.status(400).json({ error: 'Required fields missing: id, kodeKurir, tipePengiriman' });
+        }
+
+        const kurir = await Kurir.findOne({
+            where: { KodeKurir: kodeKurir, KodePerusahaan: req.user.kodePerusahaan, StatusKurir: 'AKTIF' }
+        });
+        if (!kurir) return res.status(400).json({ error: 'Invalid or inactive courier' });
+
+        const newKodePengiriman = await generateKodePengiriman(sequelize, transaction);
+
+        const shipment = await Pengiriman.create({
+            KodePengiriman: newKodePengiriman,
+            KodePerusahaan: req.user.kodePerusahaan,
+            KodeKurir: kodeKurir,
+            TipePengiriman: tipePengiriman,
+            AsalPengirim: asalPengirim || (tipePengiriman === 'FARM_TO_PROCESSOR' ? 'Peternakan' : 'Processor'),
+            TujuanPenerima: tujuanPenerima,
+            AlamatAsal: null,
+            AlamatTujuan: alamatTujuan,
+            TanggalPickup: tanggal || new Date().toISOString().split('T')[0],
+            StatusPengiriman: 'PICKUP',
+            ReferensiEksternal: id,
+            UpstreamCycleId: upstreamCycleId || null,
+            KeteranganPengiriman: keterangan || null
+        }, { transaction });
+
+        // Create genesis block for this shipment
+        // For PROCESSOR_TO_RETAILER, pass processorLastBlockHash for cross-chain hash continuity
+        await blockchain.createGenesisBlock(sequelize, {
+            kodePerusahaan: req.user.kodePerusahaan,
+            kodePengiriman: newKodePengiriman,
+            tipePengiriman,
+            asalPengirim: shipment.AsalPengirim,
+            tujuanPenerima,
+            tanggalPickup: shipment.TanggalPickup,
+            kodeKurir,
+            upstreamCycleId: upstreamCycleId || null,
+            processorLastBlockHash: processorLastBlockHash || null,
+            kodeCycleFarm: kodeCycleFarm || null,
+            transaction
+        });
+
+        await transaction.commit();
+        res.status(201).json(shipment);
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Import pengiriman error:', error);
+        res.status(500).json({ error: 'Failed to import shipment' });
     }
 });
 

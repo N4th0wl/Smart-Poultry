@@ -57,6 +57,59 @@ router.get('/data/:kodeOrder', async (req, res) => {
             });
         }
 
+        // Fetch farm care data (feeding & medication) from peternakan database
+        let farmCare = null;
+        try {
+            const peternakanConn = crossChain.getPeternakanConnection();
+            if (peternakanConn) {
+                // Get feeding records
+                const [feedData] = await peternakanConn.query(`
+                    SELECT pf.TanggalPemakaian, df.JumlahPakan, p.NamaPerlengkapan AS NamaPakan, p.Satuan
+                    FROM pemakaianfeed pf
+                    JOIN detailfeed df ON pf.KodePemakaianFeed = df.KodePemakaianFeed
+                    JOIN perlengkapan p ON df.KodePerlengkapan = p.KodePerlengkapan
+                    ORDER BY pf.TanggalPemakaian DESC
+                `);
+
+                // Get medication records
+                const [obatData] = await peternakanConn.query(`
+                    SELECT po.TanggalPenggunaan, po.JumlahObat, p.NamaPerlengkapan AS NamaObat, 
+                           mo.JenisObat, mo.Dosis, mo.TanggalKadaluarsa, p.Satuan
+                    FROM pemakaianobat po
+                    JOIN masterobat mo ON po.KodePerlengkapan = mo.KodePerlengkapan
+                    JOIN perlengkapan p ON po.KodePerlengkapan = p.KodePerlengkapan
+                    ORDER BY po.TanggalPenggunaan DESC
+                `);
+
+                farmCare = {
+                    feeding: feedData.map(f => ({
+                        tanggal: f.TanggalPemakaian,
+                        namaPakan: f.NamaPakan,
+                        jumlah: f.JumlahPakan,
+                        satuan: f.Satuan,
+                    })),
+                    medication: obatData.map(o => ({
+                        tanggal: o.TanggalPenggunaan,
+                        namaObat: o.NamaObat,
+                        jenisObat: o.JenisObat,
+                        dosis: o.Dosis,
+                        jumlah: o.JumlahObat,
+                        satuan: o.Satuan,
+                        kadaluarsa: o.TanggalKadaluarsa,
+                    })),
+                    summary: {
+                        totalFeeding: feedData.length,
+                        totalMedication: obatData.length,
+                        feedTypes: [...new Set(feedData.map(f => f.NamaPakan))],
+                        medicationTypes: [...new Set(obatData.map(o => o.JenisObat))],
+                        usesAntibiotics: obatData.some(o => o.JenisObat?.toLowerCase().includes('antibiotik')),
+                    },
+                };
+            }
+        } catch (farmErr) {
+            console.log('Farm care data not available:', farmErr.message);
+        }
+
         // Build comprehensive public trace response
         const response = {
             found: true,
@@ -70,6 +123,7 @@ router.get('/data/:kodeOrder', async (req, res) => {
                 satuan: order.Satuan,
                 statusOrder: order.StatusOrder,
             },
+            farmCare,
             production: produksi ? {
                 kodeProduksi: produksi.KodeProduksi,
                 tanggalProduksi: produksi.TanggalProduksi,

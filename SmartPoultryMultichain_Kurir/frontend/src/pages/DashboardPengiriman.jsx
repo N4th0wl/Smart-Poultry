@@ -5,12 +5,17 @@ import { pengirimanService, kurirService } from '../services'
 
 function DashboardPengiriman() {
     const [shipments, setShipments] = useState([])
+    const [incomingShipments, setIncomingShipments] = useState([])
     const [kurirs, setKurirs] = useState([])
     const [loading, setLoading] = useState(true)
+    const [activeTab, setActiveTab] = useState('all')
+
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [showBuktiModal, setShowBuktiModal] = useState(false)
     const [showNotaModal, setShowNotaModal] = useState(false)
+    const [showImportModal, setShowImportModal] = useState(false)
     const [selectedShipment, setSelectedShipment] = useState(null)
+    const [importForm, setImportForm] = useState({ kodeKurir: '' })
 
     const [createForm, setCreateForm] = useState({
         kodeKurir: '', tipePengiriman: 'FARM_TO_PROCESSOR', asalPengirim: '', tujuanPenerima: '',
@@ -29,11 +34,13 @@ function DashboardPengiriman() {
 
     const loadData = async () => {
         try {
-            const [shipData, kurirData] = await Promise.all([
+            const [shipData, kurirData, incomingData] = await Promise.all([
                 pengirimanService.getAll(),
-                kurirService.getAll()
+                kurirService.getAll(),
+                pengirimanService.getIncoming()
             ])
             setShipments(shipData)
+            setIncomingShipments(incomingData)
             setKurirs(kurirData.filter(k => k.StatusKurir === 'AKTIF'))
         } catch (error) {
             toast.error('Gagal memuat data')
@@ -82,6 +89,21 @@ function DashboardPengiriman() {
         }
     }
 
+    const handleImport = async (e) => {
+        e.preventDefault()
+        try {
+            await pengirimanService.import({
+                ...selectedShipment,
+                kodeKurir: importForm.kodeKurir
+            })
+            toast.success('Pengiriman berhasil di-import')
+            setShowImportModal(false)
+            loadData()
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Gagal import pengiriman')
+        }
+    }
+
     const getStatusBadge = (s) => ({
         'PICKUP': 'badge-pickup', 'DALAM_PERJALANAN': 'badge-transit', 'TERKIRIM': 'badge-delivered', 'GAGAL': 'badge-failed'
     }[s] || '')
@@ -97,15 +119,34 @@ function DashboardPengiriman() {
                 <h2>Pengiriman</h2>
                 <div className="page-header-actions">
                     <button className="solid-button" onClick={() => setShowCreateModal(true)}>
-                        + Buat Pengiriman
+                        + Buat Manual
                     </button>
                 </div>
             </div>
 
-            {shipments.length === 0 ? (
-                <EmptyState message="Belum ada pengiriman" icon="📦" />
-            ) : (
-                <div className="table-wrapper">
+            <div className="tabs" style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid rgba(200,215,240,0.1)' }}>
+                <button 
+                    className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('all')}
+                    style={{ padding: '8px 16px', border: 'none', background: 'none', color: activeTab === 'all' ? '#60a5fa' : '#a0aec0', cursor: 'pointer', borderBottom: activeTab === 'all' ? '2px solid #60a5fa' : 'none' }}>
+                    Daftar Pengiriman ({shipments.length})
+                </button>
+                <button 
+                    className={`tab-btn ${activeTab === 'incoming' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('incoming')}
+                    style={{ padding: '8px 16px', border: 'none', background: 'none', color: activeTab === 'incoming' ? '#60a5fa' : '#a0aec0', cursor: 'pointer', borderBottom: activeTab === 'incoming' ? '2px solid #60a5fa' : 'none', position: 'relative' }}>
+                    Permintaan Masuk
+                    {incomingShipments.length > 0 && (
+                        <span style={{ position: 'absolute', top: '0', right: '0', background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem' }}>{incomingShipments.length}</span>
+                    )}
+                </button>
+            </div>
+
+            {activeTab === 'all' ? (
+                shipments.length === 0 ? (
+                    <EmptyState message="Belum ada pengiriman" icon="📦" />
+                ) : (
+                    <div className="table-wrapper">
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -176,6 +217,56 @@ function DashboardPengiriman() {
                         </tbody>
                     </table>
                 </div>
+                )
+            ) : (
+                incomingShipments.length === 0 ? (
+                    <EmptyState message="Tidak ada permintaan pengiriman baru" icon="📫" />
+                ) : (
+                    <div className="table-wrapper">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ref ID</th>
+                                    <th>Tipe</th>
+                                    <th>Asal</th>
+                                    <th>Tujuan</th>
+                                    <th>Alamat Tujuan</th>
+                                    <th>Detail</th>
+                                    <th>Tanggal</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {incomingShipments.map((s, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ fontFamily: 'monospace', fontSize: '.82rem' }}>{s.id}</td>
+                                        <td>
+                                            <span className={`badge ${s.tipePengiriman === 'FARM_TO_PROCESSOR' ? 'badge-farm' : 'badge-retailer'}`}>
+                                                {s.tipePengiriman === 'FARM_TO_PROCESSOR' ? 'Farm→Proc' : 'Proc→Retail'}
+                                            </span>
+                                        </td>
+                                        <td>{s.asalPengirim}</td>
+                                        <td>{s.tujuanPenerima}</td>
+                                        <td>{s.alamatTujuan}</td>
+                                        <td style={{ fontSize: '.82rem', color: '#a0aec0' }}>
+                                            {s.keterangan || (s.jumlahKirim ? `${s.jumlahKirim} ekor` : '—')}
+                                        </td>
+                                        <td>{s.tanggal}</td>
+                                        <td>
+                                            <button className="solid-button" style={{ fontSize: '.75rem', padding: '4px 8px', background: '#10b981' }} onClick={() => {
+                                                setSelectedShipment(s)
+                                                setImportForm({ kodeKurir: '' })
+                                                setShowImportModal(true)
+                                            }}>
+                                                Terima Pengiriman
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )
             )}
 
             {/* Create Shipment Modal */}
@@ -300,6 +391,40 @@ function DashboardPengiriman() {
                     <div className="form-actions">
                         <button type="button" className="ghost-button" onClick={() => setShowNotaModal(false)}>Batal</button>
                         <button type="submit" className="solid-button">Simpan Nota</button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Import Shipment Modal */}
+            <Modal title="Terima Permintaan Pengiriman" isOpen={showImportModal} onClose={() => setShowImportModal(false)}>
+                <div style={{ marginBottom: '16px', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: '0.9rem', color: '#a0aec0' }}>Detail Pengiriman</p>
+                    <p style={{ margin: '4px 0', fontSize: '1rem' }}><strong>Asal:</strong> {selectedShipment?.asalPengirim}</p>
+                    <p style={{ margin: '4px 0', fontSize: '1rem' }}><strong>Tujuan:</strong> {selectedShipment?.tujuanPenerima}</p>
+                    <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#a0aec0' }}>{selectedShipment?.alamatTujuan}</p>
+                    {selectedShipment?.tipePengiriman === 'PROCESSOR_TO_RETAILER' && selectedShipment?.jumlahKirim && (
+                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(200,215,240,0.1)' }}>
+                            <p style={{ margin: '4px 0', fontSize: '0.9rem' }}><strong>Jumlah:</strong> {selectedShipment.jumlahKirim} ekor {selectedShipment.jenisAyam || ''}</p>
+                            {selectedShipment.beratKirim > 0 && (
+                                <p style={{ margin: '4px 0', fontSize: '0.9rem' }}><strong>Berat:</strong> {selectedShipment.beratKirim} kg</p>
+                            )}
+                            {selectedShipment.processorLastBlockHash && (
+                                <p style={{ margin: '4px 0', fontSize: '0.8rem', color: '#60a5fa' }}>🔗 Blockchain terhubung ke Processor</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+                <form onSubmit={handleImport}>
+                    <label>
+                        Pilih Kurir / Supir
+                        <select value={importForm.kodeKurir} onChange={(e) => setImportForm({ ...importForm, kodeKurir: e.target.value })} required>
+                            <option value="">-- Pilih Kurir --</option>
+                            {kurirs.map(k => <option key={k.KodeKurir} value={k.KodeKurir}>{k.NamaKurir}</option>)}
+                        </select>
+                    </label>
+                    <div className="form-actions">
+                        <button type="button" className="ghost-button" onClick={() => setShowImportModal(false)}>Batal</button>
+                        <button type="submit" className="solid-button" style={{ background: '#10b981' }}>Terima & Tugaskan</button>
                     </div>
                 </form>
             </Modal>

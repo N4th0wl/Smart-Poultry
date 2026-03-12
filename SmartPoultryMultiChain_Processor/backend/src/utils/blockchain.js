@@ -20,7 +20,9 @@ function generateHash(blockIndex, previousHash, tipeBlock, dataPayload, timestam
 }
 
 /**
- * Get the previous hash for a given identity chain
+ * Get the previous hash for a given identity chain.
+ * If no blocks exist yet (genesis), returns the upstream (Farm) last block hash
+ * to maintain cross-chain hash continuity.
  */
 async function getPreviousHash(sequelize, idIdentity, transaction = null) {
     const opts = { type: sequelize.QueryTypes.SELECT };
@@ -33,7 +35,16 @@ async function getPreviousHash(sequelize, idIdentity, transaction = null) {
         { ...opts, replacements: { idIdentity } }
     );
 
-    return result ? result.CurrentHash : GENESIS_PREV_HASH;
+    if (result) return result.CurrentHash;
+
+    // No blocks yet - check if there's an upstream (Farm) chain hash for continuity
+    const [identity] = await sequelize.query(
+        `SELECT FarmLastBlockHash FROM blockchainidentity 
+         WHERE IdIdentity = :idIdentity LIMIT 1`,
+        { ...opts, replacements: { idIdentity } }
+    );
+
+    return (identity && identity.FarmLastBlockHash) ? identity.FarmLastBlockHash : GENESIS_PREV_HASH;
 }
 
 /**
@@ -383,7 +394,8 @@ async function createTransferToRetailBlock(sequelize, {
 }
 
 /**
- * Validate chain integrity for an identity
+ * Validate chain integrity for an identity.
+ * Takes into account the upstream (Farm) chain hash for cross-chain continuity.
  */
 async function validateChain(sequelize, idIdentity) {
     const blocks = await sequelize.query(
@@ -398,7 +410,14 @@ async function validateChain(sequelize, idIdentity) {
         return { valid: false, message: 'No blocks found', totalBlocks: 0 };
     }
 
-    let expectedPrevHash = GENESIS_PREV_HASH;
+    // Get the upstream (Farm) chain hash to know what the genesis block's PreviousHash should be
+    const [identity] = await sequelize.query(
+        `SELECT FarmLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
+        { type: sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
+    );
+
+    // If FarmLastBlockHash exists, the genesis block should start from it (chain continuity)
+    let expectedPrevHash = (identity && identity.FarmLastBlockHash) ? identity.FarmLastBlockHash : GENESIS_PREV_HASH;
 
     for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
@@ -407,13 +426,20 @@ async function validateChain(sequelize, idIdentity) {
                 valid: false,
                 message: `Chain broken at block ${i}: Previous hash mismatch. Expected: ${expectedPrevHash.substring(0, 16)}..., Got: ${block.PreviousHash.substring(0, 16)}...`,
                 blockIndex: i,
-                totalBlocks: blocks.length
+                totalBlocks: blocks.length,
+                upstreamLinked: !!(identity && identity.FarmLastBlockHash)
             };
         }
         expectedPrevHash = block.CurrentHash;
     }
 
-    return { valid: true, message: 'Chain integrity verified ✓', totalBlocks: blocks.length };
+    return {
+        valid: true,
+        message: 'Chain integrity verified ✓',
+        totalBlocks: blocks.length,
+        upstreamLinked: !!(identity && identity.FarmLastBlockHash),
+        upstreamHash: identity?.FarmLastBlockHash || null
+    };
 }
 
 /**

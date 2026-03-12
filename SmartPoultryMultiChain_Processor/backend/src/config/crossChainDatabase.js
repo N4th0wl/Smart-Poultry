@@ -26,8 +26,8 @@ function getPeternakanConnection() {
         {
             host: process.env.PETERNAKAN_DB_HOST || 'localhost',
             port: process.env.PETERNAKAN_DB_PORT || 3306,
-            dialect: 'mariadb',
-            dialectOptions: { timezone: 'Etc/GMT+7' },
+            dialect: 'mysql',
+            timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
@@ -47,8 +47,8 @@ function getKurirConnection() {
         {
             host: process.env.KURIR_DB_HOST || 'localhost',
             port: process.env.KURIR_DB_PORT || 3306,
-            dialect: 'mariadb',
-            dialectOptions: { timezone: 'Etc/GMT+7' },
+            dialect: 'mysql',
+            timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
@@ -68,8 +68,8 @@ function getRetailerConnection() {
         {
             host: process.env.RETAILER_DB_HOST || 'localhost',
             port: process.env.RETAILER_DB_PORT || 3306,
-            dialect: 'mariadb',
-            dialectOptions: { timezone: 'Etc/GMT+7' },
+            dialect: 'mysql',
+            timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
@@ -261,12 +261,39 @@ async function getKurirBlocks(kodePengiriman) {
 async function validateKurirChain(kodePengiriman) {
     try {
         const conn = getKurirConnection();
+
+        // Get upstream hash reference for cross-chain continuity validation
+        const [identity] = await conn.query(
+            `SELECT UpstreamChainHash FROM BlockchainIdentity WHERE KodePengiriman = :kodePengiriman LIMIT 1`,
+            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengiriman } }
+        );
+
         const blocks = await conn.query(
             `SELECT BlockIndex, CurrentHash, PreviousHash FROM ledger_kurir
              WHERE KodePengiriman = :kodePengiriman ORDER BY BlockIndex ASC`,
             { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengiriman } }
         );
-        return validateChainIntegrity(blocks, 'Kurir chain');
+
+        if (blocks.length === 0) {
+            return { valid: false, message: 'No blocks found in Kurir chain', totalBlocks: 0 };
+        }
+
+        // Use upstream hash as genesis previous hash for chain continuity
+        const genesisPrevHash = (identity && identity.UpstreamChainHash) ? identity.UpstreamChainHash : '0000000000000000000000000000000000000000000000000000000000000000';
+        let expectedPrevHash = genesisPrevHash;
+
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].PreviousHash !== expectedPrevHash) {
+                return { valid: false, message: `Kurir chain broken at block ${i}`, blockIndex: i, totalBlocks: blocks.length };
+            }
+            expectedPrevHash = blocks[i].CurrentHash;
+        }
+        return {
+            valid: true,
+            message: 'Kurir chain integrity verified \u2713',
+            totalBlocks: blocks.length,
+            upstreamLinked: !!(identity && identity.UpstreamChainHash)
+        };
     } catch (error) {
         return { valid: false, message: 'Cannot connect to Kurir database', totalBlocks: 0 };
     }
@@ -343,12 +370,39 @@ async function getRetailerBlocks(idIdentity) {
 async function validateRetailerChain(idIdentity) {
     try {
         const conn = getRetailerConnection();
+
+        // Get upstream hash reference for cross-chain continuity validation
+        const [identity] = await conn.query(
+            `SELECT ProcessorLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
+            { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
+        );
+
         const blocks = await conn.query(
             `SELECT BlockIndex, CurrentHash, PreviousHash FROM ledger_retailer
              WHERE IdIdentity = :idIdentity ORDER BY BlockIndex ASC`,
             { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
         );
-        return validateChainIntegrity(blocks, 'Retailer chain');
+
+        if (blocks.length === 0) {
+            return { valid: false, message: 'No blocks found in Retailer chain', totalBlocks: 0 };
+        }
+
+        // Use upstream hash as genesis previous hash for chain continuity
+        const genesisPrevHash = (identity && identity.ProcessorLastBlockHash) ? identity.ProcessorLastBlockHash : '0000000000000000000000000000000000000000000000000000000000000000';
+        let expectedPrevHash = genesisPrevHash;
+
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].PreviousHash !== expectedPrevHash) {
+                return { valid: false, message: `Retailer chain broken at block ${i}`, blockIndex: i, totalBlocks: blocks.length };
+            }
+            expectedPrevHash = blocks[i].CurrentHash;
+        }
+        return {
+            valid: true,
+            message: 'Retailer chain integrity verified \u2713',
+            totalBlocks: blocks.length,
+            upstreamLinked: !!(identity && identity.ProcessorLastBlockHash)
+        };
     } catch (error) {
         return { valid: false, message: 'Cannot connect to Retailer database', totalBlocks: 0 };
     }

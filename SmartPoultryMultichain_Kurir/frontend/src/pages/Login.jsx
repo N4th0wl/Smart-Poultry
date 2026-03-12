@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { authService } from '../services'
 import '../styles/Login.css'
 
 function Login() {
     const navigate = useNavigate()
-    const { isAuthenticated, isAdmin, isLoading } = useAuth()
+    const { isAuthenticated, isAdmin, isLoading, login } = useAuth()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -31,7 +30,7 @@ function Login() {
         setLoading(true)
 
         try {
-            const response = await authService.login(email, password)
+            const response = await login(email, password)
             toast.success('Login Berhasil!')
 
             if (response.user?.role === 'admin') {

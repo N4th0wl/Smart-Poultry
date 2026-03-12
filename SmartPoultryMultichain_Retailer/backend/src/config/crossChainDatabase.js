@@ -26,8 +26,8 @@ function getPeternakanConnection() {
         {
             host: process.env.PETERNAKAN_DB_HOST || 'localhost',
             port: process.env.PETERNAKAN_DB_PORT || 3306,
-            dialect: 'mariadb',
-            dialectOptions: { timezone: 'Etc/GMT+7' },
+            dialect: 'mysql',
+            timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
@@ -47,8 +47,8 @@ function getKurirConnection() {
         {
             host: process.env.KURIR_DB_HOST || 'localhost',
             port: process.env.KURIR_DB_PORT || 3306,
-            dialect: 'mariadb',
-            dialectOptions: { timezone: 'Etc/GMT+7' },
+            dialect: 'mysql',
+            timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
@@ -68,8 +68,8 @@ function getProcessorConnection() {
         {
             host: process.env.PROCESSOR_DB_HOST || 'localhost',
             port: process.env.PROCESSOR_DB_PORT || 3306,
-            dialect: 'mariadb',
-            dialectOptions: { timezone: 'Etc/GMT+7' },
+            dialect: 'mysql',
+            timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }

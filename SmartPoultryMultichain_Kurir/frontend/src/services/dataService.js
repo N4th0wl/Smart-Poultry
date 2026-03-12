@@ -28,6 +28,14 @@ export const pengirimanService = {
         const response = await api.get(`/pengiriman/${id}`);
         return response.data;
     },
+    async getIncoming() {
+        const response = await api.get('/pengiriman/incoming');
+        return response.data;
+    },
+    async import(data) {
+        const response = await api.post('/pengiriman/import', data);
+        return response.data;
+    },
     async create(data) {
         const response = await api.post('/pengiriman', data);
         return response.data;

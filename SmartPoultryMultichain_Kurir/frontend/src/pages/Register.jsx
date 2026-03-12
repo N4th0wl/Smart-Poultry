@@ -7,7 +7,7 @@ import '../styles/Login.css'
 
 function Register() {
     const navigate = useNavigate()
-    const { isAuthenticated, isAdmin, isLoading } = useAuth()
+    const { isAuthenticated, isAdmin, isLoading, login, updateUser } = useAuth()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [namaPerusahaan, setNamaPerusahaan] = useState('')
@@ -33,9 +33,18 @@ function Register() {
         setLoading(true)
 
         try {
-            await authService.register(email, password, namaPerusahaan, alamatPerusahaan)
+            const response = await authService.register(email, password, namaPerusahaan, alamatPerusahaan)
+            // Update AuthContext state so isAuthenticated becomes true
+            if (response.user) {
+                updateUser(response.user)
+            }
             toast.success('Registrasi berhasil!')
-            navigate('/dashboard')
+            
+            if (response.user?.role === 'admin') {
+                navigate('/admin')
+            } else {
+                navigate('/dashboard')
+            }
         } catch (err) {
             const errorMessage = err.response?.data?.error || 'Registrasi gagal.'
             setError(errorMessage)

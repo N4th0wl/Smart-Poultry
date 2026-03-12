@@ -7,7 +7,25 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5174',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        
+        // In development, allow all localhost origins
+        if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+            if (origin.startsWith('http://localhost:')) {
+                return callback(null, true);
+            }
+        }
+        
+        // Check against allowed origins
+        const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5174').split(',');
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -51,6 +69,22 @@ sequelize.authenticate()
         return sequelize.sync({ alter: false });
     })
     .then(async () => {
+        // Auto-seed CodeCounter table if empty
+        try {
+            const { CODE_CONFIG } = require('./utils/codeGenerator');
+            const { CodeCounter } = require('./models');
+            const entityNames = Object.keys(CODE_CONFIG);
+            for (const entityName of entityNames) {
+                await CodeCounter.findOrCreate({
+                    where: { EntityName: entityName },
+                    defaults: { EntityName: entityName, LastCounter: 0 },
+                });
+            }
+            console.log('✅ CodeCounter seeded');
+        } catch (e) {
+            console.warn('⚠️ CodeCounter seed skipped:', e.message);
+        }
+
         // Test cross-chain connection to Peternakan DB
         try {
             const crossChain = require('./config/peternakanDatabase');

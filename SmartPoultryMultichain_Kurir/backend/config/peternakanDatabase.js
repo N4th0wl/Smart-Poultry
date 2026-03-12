@@ -22,10 +22,8 @@ function getPeternakanConnection() {
     peternakanSequelize = new Sequelize(dbName, dbUser, dbPassword, {
         host: dbHost,
         port: dbPort,
-        dialect: 'mariadb',
-        dialectOptions: {
-            timezone: 'Etc/GMT+7',
-        },
+        dialect: 'mysql',
+        timezone: '+07:00',
         logging: false, // Silent for cross-chain queries
         pool: {
             max: 3, // Small pool - read-only access

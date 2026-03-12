@@ -34,6 +34,9 @@ export function AuthProvider({ children }) {
 
     const updateUser = useCallback((userData) => {
         setUser(userData)
+        if (userData) {
+            setIsAuthenticated(true)
+        }
         localStorage.setItem('user', JSON.stringify(userData))
     }, [])
 

@@ -8,6 +8,7 @@ import apiClient from '../services/apiClient'
 const defaultForm = {
     idProduksi: '', tujuanPengiriman: '', namaPenerima: '', kontakPenerima: '',
     tanggalKirim: '', jumlahKirim: '', beratKirim: '', metodePengiriman: 'DIANTAR', namaEkspedisi: '', catatan: '',
+    kodeRetailer: '', namaRetailer: '', alamatRetailer: '',
 }
 
 const CLIENT_ORIGIN = import.meta.env.VITE_CLIENT_ORIGIN || window.location.origin
@@ -15,17 +16,23 @@ const CLIENT_ORIGIN = import.meta.env.VITE_CLIENT_ORIGIN || window.location.orig
 export default function PengirimanPage() {
     const [list, setList] = useState([])
     const [produksiList, setProduksiList] = useState([])
+    const [retailerList, setRetailerList] = useState([])
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [form, setForm] = useState(defaultForm)
     const [search, setSearch] = useState('')
-    const [qrModal, setQrModal] = useState(null) // { kodeOrder, kodePengiriman, jenisAyam }
+    const [qrModal, setQrModal] = useState(null)
     const { showToast } = useToast()
 
     const loadData = async () => {
         try {
-            const [res, prodRes] = await Promise.all([apiClient.get('/pengiriman'), apiClient.get('/produksi')])
+            const [res, prodRes, retRes] = await Promise.all([
+                apiClient.get('/pengiriman'),
+                apiClient.get('/produksi'),
+                apiClient.get('/pengiriman/retailers'),
+            ])
             setList(res.data.data)
             setProduksiList(prodRes.data.data)
+            setRetailerList(retRes.data.data || [])
         } catch { /* */ }
     }
 
@@ -39,11 +46,31 @@ export default function PengirimanPage() {
 
     const handleChange = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }))
 
+    const handleRetailerSelect = (e) => {
+        const kode = e.target.value
+        if (!kode) {
+            setForm(p => ({ ...p, kodeRetailer: '', namaRetailer: '', alamatRetailer: '', tujuanPengiriman: '', namaPenerima: '', kontakPenerima: '' }))
+            return
+        }
+        const ret = retailerList.find(r => r.KodeRetailer === kode)
+        if (ret) {
+            setForm(p => ({
+                ...p,
+                kodeRetailer: ret.KodeRetailer,
+                namaRetailer: ret.NamaRetailer,
+                alamatRetailer: ret.AlamatRetailer || '',
+                tujuanPengiriman: ret.AlamatRetailer || '',
+                namaPenerima: ret.NamaRetailer,
+                kontakPenerima: ret.KontakRetailer || '',
+            }))
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
             const res = await apiClient.post('/pengiriman', form)
-            showToast({ title: 'Berhasil', description: 'Pengiriman dicatat & blockchain block dibuat.', status: 'success' })
+            showToast({ title: 'Berhasil', description: res.data.message || 'Pengiriman dicatat & blockchain block dibuat.', status: 'success' })
             setForm(defaultForm)
             setIsModalOpen(false)
             loadData()
@@ -52,7 +79,6 @@ export default function PengirimanPage() {
             const produksi = produksiList.find(p => String(p.IdProduksi) === String(form.idProduksi))
             if (produksi?.order?.KodeOrder || produksi?.IdOrder) {
                 try {
-                    // Find kodeOrder from the produksi's order
                     const kodeOrder = produksi.order?.KodeOrder
                     if (kodeOrder) {
                         setQrModal({
@@ -69,7 +95,6 @@ export default function PengirimanPage() {
     }
 
     const handleShowQR = (pengiriman) => {
-        // Find kodeOrder from the pengiriman's linked produksi
         const produksi = produksiList.find(p => String(p.IdProduksi) === String(pengiriman.IdProduksi))
         if (produksi?.order?.KodeOrder) {
             setQrModal({
@@ -96,76 +121,34 @@ export default function PengirimanPage() {
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body {
                         font-family: 'Inter', sans-serif;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        padding: 40px;
-                        background: #fff;
+                        display: flex; flex-direction: column; align-items: center; justify-content: center;
+                        min-height: 100vh; padding: 40px; background: #fff;
                     }
-                    .qr-print-card {
-                        border: 2px solid #e5e7eb;
-                        border-radius: 16px;
-                        padding: 32px;
-                        text-align: center;
-                        max-width: 400px;
-                        width: 100%;
-                    }
-                    .qr-print-logo {
-                        font-size: 1.2rem;
-                        font-weight: 700;
-                        color: #8B1A1A;
-                        margin-bottom: 4px;
-                    }
-                    .qr-print-subtitle {
-                        font-size: 0.75rem;
-                        color: #6b7280;
-                        margin-bottom: 24px;
-                    }
-                    .qr-print-img {
-                        width: 250px;
-                        height: 250px;
-                        margin: 0 auto 20px;
-                    }
-                    .qr-print-code {
-                        font-size: 1.1rem;
-                        font-weight: 700;
-                        color: #1f2937;
-                        margin-bottom: 4px;
-                    }
-                    .qr-print-product {
-                        font-size: 0.85rem;
-                        color: #6b7280;
-                        margin-bottom: 16px;
-                    }
-                    .qr-print-hint {
-                        font-size: 0.7rem;
-                        color: #9ca3af;
-                        border-top: 1px solid #e5e7eb;
-                        padding-top: 12px;
-                    }
-                    @media print {
-                        body { padding: 0; }
-                        .qr-print-card { border: 1px solid #ccc; }
-                    }
+                    .qr-print-card { border: 2px solid #e5e7eb; border-radius: 16px; padding: 32px; text-align: center; max-width: 400px; width: 100%; }
+                    .qr-print-logo { font-size: 1.2rem; font-weight: 700; color: #8B1A1A; margin-bottom: 4px; }
+                    .qr-print-subtitle { font-size: 0.75rem; color: #6b7280; margin-bottom: 24px; }
+                    .qr-print-img { width: 250px; height: 250px; margin: 0 auto 20px; }
+                    .qr-print-code { font-size: 1.1rem; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+                    .qr-print-product { font-size: 0.85rem; color: #6b7280; margin-bottom: 16px; }
+                    .qr-print-hint { font-size: 0.7rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+                    @media print { body { padding: 0; } .qr-print-card { border: 1px solid #ccc; } }
                 </style>
             </head>
             <body>
                 <div class="qr-print-card">
-                    <div class="qr-print-logo">🐔 SmartPoultry</div>
+                    <div class="qr-print-logo">\u{1F414} SmartPoultry</div>
                     <div class="qr-print-subtitle">Scan untuk Traceability Produk</div>
                     <div class="qr-print-img">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(traceUrl)}" 
                              alt="QR Code" width="250" height="250" />
                     </div>
                     <div class="qr-print-code">${qrModal.kodeOrder}</div>
-                    <div class="qr-print-product">${qrModal.jenisAyam} — ${qrModal.kodePengiriman}</div>
+                    <div class="qr-print-product">${qrModal.jenisAyam} \u2014 ${qrModal.kodePengiriman}</div>
                     <div class="qr-print-hint">
                         Scan QR code ini untuk melihat jejak produk<br/>dari peternakan hingga ke tangan Anda
                     </div>
                 </div>
-                <script>setTimeout(() => window.print(), 400);</script>
+                <script>setTimeout(() => window.print(), 400);<\/script>
             </body>
             </html>
         `)
@@ -174,7 +157,7 @@ export default function PengirimanPage() {
 
     return (
         <div>
-            <PageHeader title="Pengiriman" subtitle="Kelola pengiriman produk"
+            <PageHeader title="Pengiriman" subtitle="Kelola pengiriman produk ke retailer"
                 actions={<button className="sp-btn" onClick={() => setIsModalOpen(true)}>+ Tambah Pengiriman</button>} />
 
             <div className="sp-card">
@@ -202,7 +185,7 @@ export default function PengirimanPage() {
                                             onClick={() => handleShowQR(p)}
                                             title="Lihat QR Traceability"
                                         >
-                                            📱 QR
+                                            {'\u{1F4F1}'} QR
                                         </button>
                                     </td>
                                 </tr>
@@ -216,7 +199,7 @@ export default function PengirimanPage() {
             <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title="Tambah Pengiriman" footer={
                 <div className="sp-modalActions">
                     <button className="sp-btn secondary" onClick={() => setIsModalOpen(false)}>Batal</button>
-                    <button className="sp-btn" type="submit" form="kirim-form">Simpan</button>
+                    <button className="sp-btn" type="submit" form="kirim-form">Simpan & Kirim ke Kurir</button>
                 </div>
             }>
                 <form id="kirim-form" className="sp-formGrid" onSubmit={handleSubmit}>
@@ -228,6 +211,34 @@ export default function PengirimanPage() {
                             ))}
                         </select>
                     </label>
+
+                    {/* Retailer selection from retailer database */}
+                    <label className="sp-field sp-fieldFull">
+                        <span className="sp-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {'\u{1F3EA}'} Pilih Retailer Tujuan *
+                            <span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 400 }}>(dari database retailer)</span>
+                        </span>
+                        <select className="sp-input" value={form.kodeRetailer} onChange={handleRetailerSelect} required
+                            style={{ borderColor: form.kodeRetailer ? '#10b981' : undefined }}>
+                            <option value="">-- Pilih Retailer --</option>
+                            {retailerList.map((r) => (
+                                <option key={r.KodeRetailer} value={r.KodeRetailer}>
+                                    {r.NamaRetailer} {r.AlamatRetailer ? `(${r.AlamatRetailer})` : ''}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+
+                    {form.kodeRetailer && (
+                        <div className="sp-field sp-fieldFull" style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }}>
+                            <div style={{ fontWeight: 600, color: '#166534', marginBottom: 4 }}>{'\u2705'} Retailer Dipilih</div>
+                            <div style={{ color: '#15803d' }}>{form.namaRetailer} — {form.alamatRetailer}</div>
+                            <div style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>
+                                {'\u{1F69A}'} Blockchain akan dikirim melalui Kurir Leg 2 terlebih dahulu
+                            </div>
+                        </div>
+                    )}
+
                     <label className="sp-field"><span className="sp-label">Tujuan *</span><input className="sp-input" value={form.tujuanPengiriman} onChange={handleChange('tujuanPengiriman')} required /></label>
                     <label className="sp-field"><span className="sp-label">Nama Penerima *</span><input className="sp-input" value={form.namaPenerima} onChange={handleChange('namaPenerima')} required /></label>
                     <label className="sp-field"><span className="sp-label">Kontak</span><input className="sp-input" value={form.kontakPenerima} onChange={handleChange('kontakPenerima')} /></label>
@@ -243,82 +254,50 @@ export default function PengirimanPage() {
             </Modal>
 
             {/* QR Code Modal */}
-            <Modal open={!!qrModal} onClose={() => setQrModal(null)} title="🔗 QR Code Traceability" footer={
+            <Modal open={!!qrModal} onClose={() => setQrModal(null)} title={'\u{1F517} QR Code Traceability'} footer={
                 <div className="sp-modalActions">
                     <button className="sp-btn secondary" onClick={() => setQrModal(null)}>Tutup</button>
-                    <button className="sp-btn" onClick={handlePrintQR}>🖨️ Cetak QR</button>
+                    <button className="sp-btn" onClick={handlePrintQR}>{'\u{1F5A8}\uFE0F'} Cetak QR</button>
                 </div>
             }>
                 {qrModal && (
                     <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                        {/* QR Code */}
                         <div style={{
-                            display: 'inline-block',
-                            padding: '20px',
-                            background: '#ffffff',
-                            borderRadius: '16px',
-                            boxShadow: '0 4px 24px rgba(139, 26, 26, 0.08)',
-                            marginBottom: '20px',
+                            display: 'inline-block', padding: '20px', background: '#ffffff',
+                            borderRadius: '16px', boxShadow: '0 4px 24px rgba(139, 26, 26, 0.08)', marginBottom: '20px',
                         }}>
                             <QRCodeSVG
                                 value={`${CLIENT_ORIGIN}/trace/${qrModal.kodeOrder}`}
-                                size={220}
-                                level="H"
-                                fgColor="#2C1810"
-                                bgColor="#FFFFFF"
-                                includeMargin
-                                imageSettings={{
-                                    src: '',
-                                    height: 0,
-                                    width: 0,
-                                }}
+                                size={220} level="H" fgColor="#2C1810" bgColor="#FFFFFF" includeMargin
                             />
                         </div>
 
-                        {/* Info */}
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)', marginBottom: '4px' }}>
                                 {qrModal.kodeOrder}
                             </div>
                             <div style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
-                                {qrModal.jenisAyam} — {qrModal.kodePengiriman}
+                                {qrModal.jenisAyam} {'\u2014'} {qrModal.kodePengiriman}
                             </div>
                         </div>
 
-                        {/* Link Preview */}
                         <div style={{
-                            padding: '12px 16px',
-                            background: 'var(--bg-soft)',
-                            borderRadius: '10px',
-                            fontSize: '0.78rem',
-                            color: 'var(--muted)',
-                            wordBreak: 'break-all',
-                            marginBottom: '12px',
+                            padding: '12px 16px', background: 'var(--bg-soft)', borderRadius: '10px',
+                            fontSize: '0.78rem', color: 'var(--muted)', wordBreak: 'break-all', marginBottom: '12px',
                         }}>
                             <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--ink-soft)' }}>URL Traceability:</div>
-                            <a
-                                href={`${CLIENT_ORIGIN}/trace/${qrModal.kodeOrder}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: 'var(--primary)', textDecoration: 'underline' }}
-                            >
+                            <a href={`${CLIENT_ORIGIN}/trace/${qrModal.kodeOrder}`} target="_blank" rel="noopener noreferrer"
+                                style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
                                 {`${CLIENT_ORIGIN}/trace/${qrModal.kodeOrder}`}
                             </a>
                         </div>
 
                         <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            justifyContent: 'center',
-                            padding: '10px 16px',
-                            background: 'rgba(16, 163, 74, 0.06)',
-                            borderRadius: '10px',
-                            fontSize: '0.78rem',
-                            color: 'var(--success)',
-                            fontWeight: 500,
+                            display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center',
+                            padding: '10px 16px', background: 'rgba(16, 163, 74, 0.06)', borderRadius: '10px',
+                            fontSize: '0.78rem', color: 'var(--success)', fontWeight: 500,
                         }}>
-                            ✅ QR code ini dapat langsung dicetak dan ditempel pada kemasan produk
+                            {'\u2705'} QR code ini dapat langsung dicetak dan ditempel pada kemasan produk
                         </div>
                     </div>
                 )}

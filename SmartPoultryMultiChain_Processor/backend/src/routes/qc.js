@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { QualityControl, Produksi, Karyawan, BlockchainIdentity, sequelize } = require('../models');
+const QRCode = require('qrcode');
+const { QualityControl, Produksi, Karyawan, Order, BlockchainIdentity, sequelize } = require('../models');
 const { generateKodeQC, generateKodeBlock } = require('../utils/codeGenerator');
 const { createQualityCheckBlock } = require('../utils/blockchain');
 const { authMiddleware } = require('../middlewares/auth');
@@ -54,6 +55,8 @@ router.post('/', authMiddleware, async (req, res) => {
 
         // Update produksi status
         const produksi = await Produksi.findByPk(idProduksi, { transaction: t });
+        let qrCodeData = null;
+
         if (produksi) {
             const newStatus = hasilQC === 'LULUS' ? 'LULUS_QC' : 'GAGAL_QC';
             await produksi.update({ StatusProduksi: newStatus }, { transaction: t });
@@ -83,10 +86,46 @@ router.post('/', authMiddleware, async (req, res) => {
                     transaction: t,
                 });
             }
+
+            // Auto-generate QR code if QC passed (LULUS)
+            if (hasilQC === 'LULUS') {
+                try {
+                    const order = await Order.findByPk(produksi.IdOrder, { transaction: t });
+                    if (order) {
+                        const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5175';
+                        const traceUrl = `${clientOrigin}/trace/${order.KodeOrder}`;
+                        const qrDataUrl = await QRCode.toDataURL(traceUrl, {
+                            width: 400, margin: 2,
+                            color: { dark: '#2C1810', light: '#FFFFFF' },
+                            errorCorrectionLevel: 'H',
+                        });
+                        qrCodeData = {
+                            kodeOrder: order.KodeOrder,
+                            traceUrl,
+                            qrCode: qrDataUrl,
+                            jenisAyam: order.JenisAyam,
+                            namaPeternakan: order.NamaPeternakan,
+                        };
+                    }
+                } catch (qrErr) {
+                    console.error('QR generation error (non-fatal):', qrErr.message);
+                }
+            }
         }
 
         await t.commit();
-        res.status(201).json({ message: 'QC berhasil dicatat.', data: qc });
+
+        const responseData = {
+            message: hasilQC === 'LULUS'
+                ? 'QC LULUS! QR Code traceability telah dibuat.'
+                : 'QC dicatat (GAGAL).',
+            data: qc,
+        };
+        if (qrCodeData) {
+            responseData.qrCode = qrCodeData;
+        }
+
+        res.status(201).json(responseData);
     } catch (error) {
         await t.rollback();
         console.error('Create QC error:', error);

@@ -5,6 +5,7 @@ import './index.css'
 import './styles/toast.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
+import App from './App.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import DashboardLayout from './pages/DashboardLayout.jsx'
@@ -72,7 +73,7 @@ createRoot(document.getElementById('root')).render(
         <BrowserRouter>
             <AuthProvider>
                 <Routes>
-                    <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route path="/" element={<App />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
 

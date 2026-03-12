@@ -151,10 +151,14 @@ router.put('/:id/terima', authMiddleware, async (req, res) => {
         // Create blockchain identity & RECEIVE_FROM_FARM block
         const kodeIdentity = await generateKodeIdentity(sequelize, t);
 
-        // Generate genesis hash (the RECEIVE_FROM_FARM is the genesis block for processor chain)
+        // Use Farm's last block hash as genesis PreviousHash for cross-chain continuity
+        // Only the very first node (Peternakan) starts from 000...000
+        const genesisPrevHash = farmLastBlockHash || GENESIS_PREV_HASH;
+
+        // Generate genesis hash using the upstream hash for continuity
         const genesisHash = generateHash(
             0,
-            GENESIS_PREV_HASH,
+            genesisPrevHash,
             'RECEIVE_FROM_FARM',
             JSON.stringify({
                 kode_order: order.KodeOrder,

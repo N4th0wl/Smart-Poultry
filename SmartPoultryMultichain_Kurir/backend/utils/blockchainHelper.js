@@ -21,7 +21,9 @@ function generateHash(blockIndex, previousHash, tipeBlock, dataPayload, timestam
 }
 
 /**
- * Get the previous hash for a given shipment chain
+ * Get the previous hash for a given shipment chain.
+ * If no blocks exist yet (genesis), returns the upstream chain hash
+ * to maintain cross-chain hash continuity.
  */
 async function getPreviousHash(sequelize, kodePengiriman, transaction = null) {
     const opts = { type: sequelize.QueryTypes.SELECT };
@@ -34,7 +36,16 @@ async function getPreviousHash(sequelize, kodePengiriman, transaction = null) {
         { ...opts, replacements: { kodePengiriman } }
     );
 
-    return result ? result.CurrentHash : GENESIS_PREV_HASH;
+    if (result) return result.CurrentHash;
+
+    // No blocks yet - check if there's an upstream chain hash for continuity
+    const [identity] = await sequelize.query(
+        `SELECT UpstreamChainHash FROM BlockchainIdentity 
+         WHERE KodePengiriman = :kodePengiriman LIMIT 1`,
+        { ...opts, replacements: { kodePengiriman } }
+    );
+
+    return (identity && identity.UpstreamChainHash) ? identity.UpstreamChainHash : GENESIS_PREV_HASH;
 }
 
 /**
@@ -118,18 +129,56 @@ async function createBlock(sequelize, { kodePerusahaan, kodePengiriman, tipeBloc
 
 /**
  * GENESIS BLOCK - When a new shipment is created
- * Now also creates LINK_UPSTREAM block if upstream cycle is provided
+ * Uses upstream chain's last block hash as PreviousHash for chain continuity.
+ * Also creates LINK_UPSTREAM block if upstream cycle is provided.
  */
-async function createGenesisBlock(sequelize, { kodePerusahaan, kodePengiriman, tipePengiriman, asalPengirim, tujuanPenerima, tanggalPickup, kodeKurir, upstreamCycleId, transaction = null }) {
+async function createGenesisBlock(sequelize, { kodePerusahaan, kodePengiriman, tipePengiriman, asalPengirim, tujuanPenerima, tanggalPickup, kodeKurir, upstreamCycleId, processorLastBlockHash, kodeCycleFarm, transaction = null }) {
     const queryOpts = {};
     if (transaction) queryOpts.transaction = transaction;
 
-    // Try to get upstream chain hash if cycle ID is provided
+    // Try to get upstream chain hash based on shipment type
     let upstreamChainHash = null;
     let upstreamNodeType = null;
     let upstreamData = null;
 
-    if (upstreamCycleId) {
+    if (tipePengiriman === 'PROCESSOR_TO_RETAILER' && processorLastBlockHash) {
+        // For Leg 2: Upstream is the Processor chain
+        upstreamChainHash = processorLastBlockHash;
+        upstreamNodeType = 'NODE_PROCESSOR';
+
+        // Try to get processor chain data for LINK_UPSTREAM block
+        try {
+            const { getProcessorConnection } = require('../config/crossChainDatabase');
+            const procConn = getProcessorConnection();
+            if (procConn && upstreamCycleId) {
+                const [procIdentity] = await procConn.query(
+                    `SELECT bi.KodeIdentity, bi.StatusChain, bi.TotalBlocks, bi.GenesisHash,
+                            bi.LatestBlockHash, bi.KodeCycleFarm, o.NamaProcessor, o.NamaPeternakan
+                     FROM blockchainidentity bi
+                     LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
+                     WHERE bi.IdOrder = :idOrder`,
+                    { type: require('sequelize').QueryTypes.SELECT, replacements: { idOrder: upstreamCycleId } }
+                );
+                if (procIdentity) {
+                    upstreamData = {
+                        type: 'PROCESSOR',
+                        chain: {
+                            kodeIdentity: procIdentity.KodeIdentity,
+                            statusChain: procIdentity.StatusChain,
+                            totalBlocks: procIdentity.TotalBlocks,
+                            genesisHash: procIdentity.GenesisHash,
+                            latestBlockHash: procIdentity.LatestBlockHash,
+                            namaProcessor: procIdentity.NamaProcessor,
+                            namaPeternakan: procIdentity.NamaPeternakan
+                        }
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn('Could not fetch Processor upstream chain data:', err.message);
+        }
+    } else if (upstreamCycleId) {
+        // For Leg 1: Upstream is the Peternakan chain (existing logic)
         try {
             const latestBlock = await crossChain.getPeternakanLatestHash(upstreamCycleId);
             if (latestBlock) {
@@ -138,15 +187,20 @@ async function createGenesisBlock(sequelize, { kodePerusahaan, kodePengiriman, t
             }
             // Get upstream chain info for the LINK block
             upstreamData = await crossChain.getPeternakanBlockchainByCycle(upstreamCycleId);
+            if (upstreamData) upstreamData.type = 'PETERNAKAN';
         } catch (err) {
             console.warn('Could not fetch upstream chain data:', err.message);
         }
     }
 
-    // Generate genesis hash
+    // Use upstream chain hash as the genesis previous hash for chain continuity
+    // Only the very first node (Peternakan) starts from 000...000
+    const genesisPrevHash = upstreamChainHash || GENESIS_PREV_HASH;
+
+    // Generate genesis hash using the upstream hash for continuity
     const genesisHash = generateHash(
         0,
-        GENESIS_PREV_HASH,
+        genesisPrevHash,
         'GENESIS',
         JSON.stringify({ pengiriman_id: kodePengiriman, tipe: tipePengiriman, asal: asalPengirim }),
         new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -166,12 +220,12 @@ async function createGenesisBlock(sequelize, { kodePerusahaan, kodePengiriman, t
                 kodeIdentity, kodePerusahaan, kodePengiriman, genesisHash,
                 upstreamChainHash: upstreamChainHash || null,
                 upstreamNodeType: upstreamNodeType || null,
-                upstreamCycleId: upstreamCycleId || null
+                upstreamCycleId: kodeCycleFarm || upstreamCycleId || null
             }
         }
     );
 
-    // Create Genesis Block
+    // Create Genesis Block - PreviousHash = upstream's last hash (chain continuity!)
     const genesisBlock = await createBlock(sequelize, {
         kodePerusahaan,
         kodePengiriman,
@@ -185,15 +239,18 @@ async function createGenesisBlock(sequelize, { kodePerusahaan, kodePengiriman, t
             tujuan_penerima: tujuanPenerima,
             tanggal_pickup: tanggalPickup,
             kode_kurir: kodeKurir,
-            upstream_linked: !!upstreamCycleId,
-            upstream_cycle_id: upstreamCycleId || null,
-            upstream_chain_hash: upstreamChainHash || null
+            upstream_linked: !!upstreamChainHash,
+            upstream_cycle_id: kodeCycleFarm || upstreamCycleId || null,
+            upstream_chain_hash: upstreamChainHash || null,
+            upstream_node_type: upstreamNodeType || null,
+            chain_continuity: upstreamChainHash ? 'LINKED' : 'STANDALONE'
         },
         transaction
     });
 
     // If upstream data is available, create LINK_UPSTREAM block
     if (upstreamData && upstreamData.chain) {
+        const isProcessor = upstreamData.type === 'PROCESSOR';
         await createBlock(sequelize, {
             kodePerusahaan,
             kodePengiriman,
@@ -201,17 +258,19 @@ async function createGenesisBlock(sequelize, { kodePerusahaan, kodePengiriman, t
             dataPayload: {
                 event: 'LINK_UPSTREAM',
                 node: 'NODE_KURIR',
-                description: 'Chain link anchor to upstream Peternakan blockchain',
-                upstream_node: 'NODE_PETERNAKAN',
-                upstream_cycle_id: upstreamCycleId,
+                description: isProcessor
+                    ? 'Chain link anchor to upstream Processor blockchain'
+                    : 'Chain link anchor to upstream Peternakan blockchain',
+                upstream_node: isProcessor ? 'NODE_PROCESSOR' : 'NODE_PETERNAKAN',
+                upstream_cycle_id: kodeCycleFarm || upstreamCycleId,
                 upstream_chain_identity: upstreamData.chain.kodeIdentity,
-                upstream_peternakan: upstreamData.chain.peternakan,
-                upstream_lokasi: upstreamData.chain.lokasi,
+                upstream_entity: isProcessor
+                    ? upstreamData.chain.namaProcessor
+                    : (upstreamData.chain.peternakan || upstreamData.chain.namaPeternakan),
                 upstream_genesis_hash: upstreamData.chain.genesisHash,
                 upstream_latest_hash: upstreamData.chain.latestBlockHash,
                 upstream_total_blocks: upstreamData.chain.totalBlocks,
                 upstream_status: upstreamData.chain.statusChain,
-                upstream_block_types: upstreamData.blocks.map(b => b.TipeBlock),
                 link_timestamp: new Date().toISOString(),
                 chain_continuity: 'VERIFIED'
             },
@@ -343,7 +402,8 @@ async function createDeliveryRetailerBlock(sequelize, { kodePerusahaan, kodePeng
 }
 
 /**
- * Validate chain integrity for a shipment
+ * Validate chain integrity for a shipment.
+ * Takes into account the upstream chain hash for cross-chain continuity.
  */
 async function validateChain(sequelize, kodePengiriman) {
     const blocks = await sequelize.query(
@@ -358,7 +418,15 @@ async function validateChain(sequelize, kodePengiriman) {
         return { valid: false, message: 'No blocks found', totalBlocks: 0 };
     }
 
-    let expectedPrevHash = GENESIS_PREV_HASH;
+    // Get the upstream chain hash to know what the genesis block's PreviousHash should be
+    const [identity] = await sequelize.query(
+        `SELECT UpstreamChainHash FROM BlockchainIdentity WHERE KodePengiriman = :kodePengiriman LIMIT 1`,
+        { type: sequelize.QueryTypes.SELECT, replacements: { kodePengiriman } }
+    );
+
+    // If upstream hash exists, the genesis block should start from it (chain continuity)
+    // Otherwise, fall back to 000...000
+    let expectedPrevHash = (identity && identity.UpstreamChainHash) ? identity.UpstreamChainHash : GENESIS_PREV_HASH;
 
     for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
@@ -367,13 +435,20 @@ async function validateChain(sequelize, kodePengiriman) {
                 valid: false,
                 message: `Chain broken at block ${i}: Previous hash mismatch. Expected: ${expectedPrevHash.substring(0, 16)}..., Got: ${block.PreviousHash.substring(0, 16)}...`,
                 blockIndex: i,
-                totalBlocks: blocks.length
+                totalBlocks: blocks.length,
+                upstreamLinked: !!(identity && identity.UpstreamChainHash)
             };
         }
         expectedPrevHash = block.CurrentHash;
     }
 
-    return { valid: true, message: 'Chain integrity verified ✓', totalBlocks: blocks.length };
+    return {
+        valid: true,
+        message: 'Chain integrity verified ✓',
+        totalBlocks: blocks.length,
+        upstreamLinked: !!(identity && identity.UpstreamChainHash),
+        upstreamHash: identity?.UpstreamChainHash || null
+    };
 }
 
 /**

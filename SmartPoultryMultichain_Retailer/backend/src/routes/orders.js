@@ -106,7 +106,11 @@ router.put('/:id/terima', authMiddleware, async (req, res) => {
 
         // Create blockchain identity
         const kodeIdentity = await generateKodeIdentity(sequelize, t);
-        const genesisHash = blockchain.generateHash(0, blockchain.GENESIS_PREV_HASH, 'RECEIVE_FROM_PROCESSOR', {}, new Date().toISOString(), 0);
+
+        // Use Processor's last block hash as genesis PreviousHash for cross-chain continuity
+        // Only the very first node (Peternakan) starts from 000...000
+        const genesisPrevHash = processorLastBlockHash || blockchain.GENESIS_PREV_HASH;
+        const genesisHash = blockchain.generateHash(0, genesisPrevHash, 'RECEIVE_FROM_PROCESSOR', {}, new Date().toISOString(), 0);
 
         const identity = await BlockchainIdentity.create({
             KodeIdentity: kodeIdentity,

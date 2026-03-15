@@ -41,6 +41,7 @@ const PROCESSOR_BLOCK_CONFIG = {
 
 const RETAILER_BLOCK_CONFIG = {
     RECEIVE_FROM_PROCESSOR: { label: 'Terima dari Processor', color: '#10b981', icon: '📦' },
+    RECEIVE_FROM_COURIER: { label: 'Terima dari Kurir', color: '#10b981', icon: '📦' },
     NOTA_PENERIMAAN: { label: 'Nota Penerimaan', color: '#3b82f6', icon: '📋' },
     STOCK_IN: { label: 'Stok Masuk', color: '#8b5cf6', icon: '📥' },
     SALE_RECORDED: { label: 'Penjualan', color: '#f59e0b', icon: '💰' },
@@ -1155,7 +1156,8 @@ function getBlockSummary(nodeType, tipeBlock, payload) {
     if (nodeType === 'NODE_RETAILER') {
         switch (tipeBlock) {
             case 'RECEIVE_FROM_PROCESSOR':
-                return `Diterima dari processor: ${payload.nama_processor || payload.processor || '?'} (${payload.jumlah_diterima || '?'} ${payload.satuan || 'kg'})`
+            case 'RECEIVE_FROM_COURIER':
+                return `Diterima dari kurir: ${payload.nama_kurir || payload.nama_processor || payload.processor || '?'} (${payload.jumlah_diterima || '?'} ${payload.satuan || 'kg'})`
             case 'NOTA_PENERIMAAN':
                 return `Nota penerimaan: ${payload.kode_nota || '?'} - ${payload.jumlah_diterima || '?'} ${payload.satuan || 'kg'}`
             case 'STOCK_IN':

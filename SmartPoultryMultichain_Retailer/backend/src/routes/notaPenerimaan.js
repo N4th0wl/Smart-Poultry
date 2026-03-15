@@ -3,11 +3,96 @@ const router = express.Router();
 const { NotaPenerimaan, Order, BlockchainIdentity, sequelize } = require('../models');
 const { generateKodeNotaPenerimaan, generateKodeBlock } = require('../utils/codeGenerator');
 const blockchain = require('../utils/blockchain');
+const { getKurirConnection } = require('../config/crossChainDatabase');
 const { authMiddleware } = require('../middlewares/auth');
 
 // GET /api/nota-penerimaan
 router.get('/', authMiddleware, async (req, res) => {
     try {
+        // Auto-sync completed deliveries from Kurir
+        try {
+            const kurirConn = getKurirConnection();
+            if (kurirConn) {
+                const sql = `
+                    SELECT p.KodePengiriman, p.UpstreamCycleId, p.AsalPengirim, n.NamaPenerima, n.TanggalSampai, n.KondisiBarang, n.Keterangan
+                    FROM pengiriman p
+                    JOIN notapengirimankurir n ON p.KodePengiriman = n.KodePengiriman
+                    WHERE p.TipePengiriman = 'PROCESSOR_TO_RETAILER' 
+                    AND p.StatusPengiriman = 'TERKIRIM'
+                `;
+                const [completedDeliveries] = await kurirConn.query(sql);
+
+                for (const delivery of completedDeliveries) {
+                    const existing = await NotaPenerimaan.findOne({ 
+                        where: { KodeNotaPengirimanProcessor: delivery.KodePengiriman } 
+                    });
+
+                    if (!existing && delivery.UpstreamCycleId) {
+                        const order = await Order.findByPk(delivery.UpstreamCycleId);
+                        if (order && order.IdRetailer === req.user.idRetailer) {
+                            const t = await sequelize.transaction();
+                            try {
+                                const kodeNota = await generateKodeNotaPenerimaan(sequelize, t);
+                                
+                                let kondisi = 'BAIK';
+                                let jumlahRusak = 0;
+                                if (delivery.KondisiBarang === 'RUSAK_SEBAGIAN') {
+                                    kondisi = 'CUKUP';
+                                    jumlahRusak = 1;
+                                } else if (delivery.KondisiBarang === 'RUSAK_TOTAL') {
+                                    kondisi = 'BURUK';
+                                    jumlahRusak = order.JumlahPesanan;
+                                }
+
+                                await NotaPenerimaan.create({
+                                    KodeNotaPenerimaan: kodeNota,
+                                    IdOrder: order.IdOrder,
+                                    IdRetailer: req.user.idRetailer,
+                                    KodeNotaPengirimanProcessor: delivery.KodePengiriman,
+                                    TanggalPenerimaan: delivery.TanggalSampai || new Date().toISOString().split('T')[0],
+                                    NamaPengirim: delivery.AsalPengirim,
+                                    NamaPenerima: delivery.NamaPenerima,
+                                    JumlahDikirim: order.JumlahPesanan,
+                                    JumlahDiterima: order.JumlahPesanan - jumlahRusak,
+                                    JumlahRusak: jumlahRusak,
+                                    KondisiBarang: kondisi,
+                                    CatatanPenerimaan: 'Otomatis tersinkronisasi dari Kurir (' + (delivery.Keterangan || 'Terkirim') + ')'
+                                }, { transaction: t });
+
+                                const identity = await BlockchainIdentity.findOne({ where: { IdOrder: order.IdOrder }, transaction: t });
+                                if (identity) {
+                                    const kodeBlock = await generateKodeBlock(sequelize, t);
+                                    await blockchain.createNotaPenerimaanBlock(sequelize, {
+                                        idIdentity: identity.IdIdentity,
+                                        idOrder: order.IdOrder,
+                                        kodeBlock,
+                                        kodeNotaPenerimaan: kodeNota,
+                                        kodeNotaPengirimanKurir: delivery.KodePengiriman,
+                                        namaPengirim: delivery.AsalPengirim,
+                                        namaPenerima: delivery.NamaPenerima,
+                                        jumlahDikirim: order.JumlahPesanan,
+                                        jumlahDiterima: order.JumlahPesanan - jumlahRusak,
+                                        jumlahRusak: jumlahRusak,
+                                        kondisiBarang: kondisi,
+                                        tanggalPenerimaan: delivery.TanggalSampai || new Date().toISOString().split('T')[0],
+                                        transaction: t
+                                    });
+                                }
+
+                                await order.update({ StatusOrder: 'SELESAI' }, { transaction: t });
+                                await t.commit();
+                            } catch (err) {
+                                await t.rollback();
+                                console.error('Auto-create nota failed:', err);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Auto-sync kurir delivery failed', e.message);
+        }
+
         const where = req.user.idRetailer ? { IdRetailer: req.user.idRetailer } : {};
         const notes = await NotaPenerimaan.findAll({
             where,
@@ -26,7 +111,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const {
-            idOrder, kodeNotaPengirimanProcessor,
+            idOrder, kodeNotaPengirimanKurir,
             namaPengirim, namaPenerima,
             jumlahDikirim, jumlahDiterima, jumlahRusak,
             kondisiBarang, suhuSaatTerima, catatanPenerimaan
@@ -49,7 +134,7 @@ router.post('/', authMiddleware, async (req, res) => {
             KodeNotaPenerimaan: kodeNota,
             IdOrder: idOrder,
             IdRetailer: req.user.idRetailer,
-            KodeNotaPengirimanProcessor: kodeNotaPengirimanProcessor || null,
+            KodeNotaPengirimanProcessor: kodeNotaPengirimanKurir || null,
             TanggalPenerimaan: new Date().toISOString().split('T')[0],
             NamaPengirim: namaPengirim || order.NamaProcessor,
             NamaPenerima: namaPenerima,
@@ -70,7 +155,7 @@ router.post('/', authMiddleware, async (req, res) => {
                 idOrder: idOrder,
                 kodeBlock,
                 kodeNotaPenerimaan: kodeNota,
-                kodeNotaPengirimanProcessor: kodeNotaPengirimanProcessor || null,
+                kodeNotaPengirimanKurir: kodeNotaPengirimanKurir || null,
                 namaPengirim: namaPengirim || order.NamaProcessor,
                 namaPenerima: namaPenerima,
                 jumlahDikirim: jumlahDikirim || order.JumlahPesanan,

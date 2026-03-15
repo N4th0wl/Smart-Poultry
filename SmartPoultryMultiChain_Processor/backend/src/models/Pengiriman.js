@@ -14,7 +14,7 @@ const Pengiriman = sequelize.define('Pengiriman', {
     BeratKirim: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     MetodePengiriman: { type: DataTypes.ENUM('DIANTAR', 'DIAMBIL', 'EKSPEDISI'), allowNull: false, defaultValue: 'DIANTAR' },
     NamaEkspedisi: { type: DataTypes.STRING(100), allowNull: true },
-    StatusPengiriman: { type: DataTypes.ENUM('DISIAPKAN', 'DIKIRIM', 'TERKIRIM', 'GAGAL'), allowNull: false, defaultValue: 'DISIAPKAN' },
+    StatusPengiriman: { type: DataTypes.ENUM('DISIAPKAN', 'DIKIRIM', 'DIKIRIM_KURIR', 'TERKIRIM', 'GAGAL'), allowNull: false, defaultValue: 'DISIAPKAN' },
     Catatan: { type: DataTypes.TEXT, allowNull: true },
 }, {
     tableName: 'pengiriman',

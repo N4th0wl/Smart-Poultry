@@ -95,6 +95,7 @@ const BLOCK_TYPE_CONFIG = {
     ARRIVAL: { label: 'Tiba di Tujuan', icon: '🏁', color: '#8b5cf6' },
     DELIVERY_CONFIRMED: { label: 'Pengiriman Dikonfirmasi', icon: '✅', color: '#059669' },
     RECEIVE_FROM_PROCESSOR: { label: 'Diterima dari Processor', icon: '📥', color: '#10b981' },
+    RECEIVE_FROM_COURIER: { label: 'Diterima dari Kurir', icon: '📥', color: '#10b981' },
     STOCK_REGISTERED: { label: 'Stok Terdaftar', icon: '📊', color: '#3b82f6' },
     DISPLAY_READY: { label: 'Siap Display', icon: '🏪', color: '#8b5cf6' },
     SOLD: { label: 'Terjual', icon: '💰', color: '#059669' },

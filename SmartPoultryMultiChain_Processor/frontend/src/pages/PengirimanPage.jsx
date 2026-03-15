@@ -7,7 +7,7 @@ import apiClient from '../services/apiClient'
 
 const defaultForm = {
     idProduksi: '', tujuanPengiriman: '', namaPenerima: '', kontakPenerima: '',
-    tanggalKirim: '', jumlahKirim: '', beratKirim: '', metodePengiriman: 'DIANTAR', namaEkspedisi: '', catatan: '',
+    tanggalKirim: '', jumlahKirim: '', beratKirim: '', metodePengiriman: 'EKSPEDISI', namaEkspedisi: 'Kurir Sistem', catatan: '',
     kodeRetailer: '', namaRetailer: '', alamatRetailer: '',
 }
 
@@ -176,7 +176,14 @@ export default function PengirimanPage() {
                                     <td>{p.TujuanPengiriman}</td>
                                     <td>{p.NamaPenerima}</td>
                                     <td>{p.JumlahKirim}</td>
-                                    <td><span className={`sp-badge ${p.StatusPengiriman === 'SAMPAI' ? 'success' : p.StatusPengiriman === 'DALAM_PERJALANAN' ? 'info' : 'muted'}`}>{p.StatusPengiriman?.replace(/_/g, ' ')}</span></td>
+                                    <td><span className={`sp-badge ${p.StatusPengiriman === 'TERKIRIM' ? 'success' : p.StatusPengiriman === 'DIKIRIM_KURIR' ? 'info' : p.StatusPengiriman === 'GAGAL' ? 'error' : 'muted'}`}>{
+                                        p.StatusPengiriman === 'DISIAPKAN' ? '📦 Disiapkan' :
+                                        p.StatusPengiriman === 'DIKIRIM' ? '🚚 Dikirim' :
+                                        p.StatusPengiriman === 'DIKIRIM_KURIR' ? '🚛 Dikirim via Kurir' :
+                                        p.StatusPengiriman === 'TERKIRIM' ? '✅ Terkirim' :
+                                        p.StatusPengiriman === 'GAGAL' ? '❌ Gagal' :
+                                        p.StatusPengiriman?.replace(/_/g, ' ')
+                                    }</span></td>
                                     <td>{p.TanggalKirim}</td>
                                     <td>
                                         <button
@@ -245,11 +252,7 @@ export default function PengirimanPage() {
                     <label className="sp-field"><span className="sp-label">Tanggal Kirim *</span><input className="sp-input" type="date" value={form.tanggalKirim} onChange={handleChange('tanggalKirim')} required /></label>
                     <label className="sp-field"><span className="sp-label">Jumlah *</span><input className="sp-input" type="number" min="1" value={form.jumlahKirim} onChange={handleChange('jumlahKirim')} required /></label>
                     <label className="sp-field"><span className="sp-label">Berat (kg)</span><input className="sp-input" type="number" step="0.01" value={form.beratKirim} onChange={handleChange('beratKirim')} /></label>
-                    <label className="sp-field"><span className="sp-label">Metode</span>
-                        <select className="sp-input" value={form.metodePengiriman} onChange={handleChange('metodePengiriman')}>
-                            <option value="DIANTAR">Diantar</option><option value="DIAMBIL">Diambil</option><option value="EKSPEDISI">Ekspedisi</option>
-                        </select>
-                    </label>
+
                 </form>
             </Modal>
 

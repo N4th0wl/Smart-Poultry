@@ -155,6 +155,9 @@ export default function Sidebar({ isOpen, onRequestClose, onNavigate, onAccountS
           <NavItem to="/app/orders" icon={IconOrder} label="Order" onNavigate={onNavigate} />
         )}
         {isAdmin && (
+          <NavItem to="/app/pesanan-retailer" icon={IconOrder} label="Pesanan dari Retailer" onNavigate={onNavigate} />
+        )}
+        {isAdmin && (
           <NavItem to="/app/nota-penerimaan" icon={IconReceipt} label="Nota Penerimaan" onNavigate={onNavigate} />
         )}
         <NavItem to="/app/tugas" icon={IconTask} label="Tugas Produksi" onNavigate={onNavigate} />

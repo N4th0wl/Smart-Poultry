@@ -7,7 +7,18 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is explicitly allowed or matches local dev server pattern
+    if (origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+    
+    // Fallback to process.env.CLIENT_ORIGIN if strictly needed later
+    callback(null, true); // Permissive for development
+  },
   credentials: true
 }));
 app.use(express.json());

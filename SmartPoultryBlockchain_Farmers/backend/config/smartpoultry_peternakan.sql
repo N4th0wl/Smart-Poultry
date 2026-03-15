@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Feb 28, 2026 at 02:16 AM
+-- Generation Time: Mar 15, 2026 at 04:31 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -51,6 +51,33 @@ CREATE TABLE `codecounter` (
   `LastCounter` int NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- Dumping data for table `codecounter`
+--
+
+INSERT INTO `codecounter` (`EntityName`, `LastCounter`) VALUES
+('DetailNotaPenerimaan', 0),
+('DetailOrder', 0),
+('DOC', 0),
+('Kandang', 0),
+('NotaPenerimaan', 0),
+('NotaPengiriman', 0),
+('Orders', 0),
+('Panen', 0),
+('PemakaianFeed', 0),
+('PemakaianObat', 0),
+('PemakaianPerlengkapan', 0),
+('Pengiriman', 0),
+('PengukuranAyam', 0),
+('Performance', 0),
+('Perlengkapan', 0),
+('Staf', 0),
+('StatusKandang', 0),
+('StatusKematian', 0),
+('Supplier', 0),
+('TimKerja', 0),
+('Warehouse', 0);
+
 -- --------------------------------------------------------
 
 --
@@ -62,7 +89,7 @@ CREATE TABLE `cycle` (
   `TanggalMulai` date NOT NULL,
   `DurasiCycle` int NOT NULL,
   `SisaHariPanen` int NOT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -164,7 +191,7 @@ CREATE TABLE `ledger_peternakan` (
   `StatusBlock` enum('VALIDATED','REJECTED') NOT NULL DEFAULT 'VALIDATED',
   `CreatedAt` datetime DEFAULT NULL,
   `ValidatedAt` datetime DEFAULT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -586,7 +613,8 @@ CREATE TABLE `warehouse` (
 --
 
 INSERT INTO `warehouse` (`KodeWarehouse`, `KodePeternakan`, `LokasiWarehouse`) VALUES
-('WRH-000000001', 2, 'Warehouse Utama');
+('WRH-000000001', 2, 'Warehouse Utama'),
+('WRH-000000002', 1, 'Warehouse Utama');
 
 --
 -- Indexes for dumped tables
@@ -1126,12 +1154,6 @@ ALTER TABLE `todo`
 --
 ALTER TABLE `todos`
   ADD CONSTRAINT `todos_ibfk_1` FOREIGN KEY (`KodePeternakan`) REFERENCES `peternakan` (`KodePeternakan`) ON DELETE CASCADE;
-
---
--- Constraints for table `warehouse`
---
-ALTER TABLE `warehouse`
-  ADD CONSTRAINT `warehouse_ibfk_1` FOREIGN KEY (`KodePeternakan`) REFERENCES `peternakan` (`KodePeternakan`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -497,7 +497,7 @@ router.get('/blockchain/unified-overview', async (req, res) => {
                     NamaProduk: c.NamaProduk,
                     NamaRetailer: c.NamaRetailer,
                     AlamatRetailer: c.AlamatRetailer,
-                    KodeOrderProcessor: c.KodeOrderProcessor,
+                    KodePengirimanKurir: c.KodePengirimanKurir,
                     GenesisHash: c.GenesisHash,
                     LatestBlockHash: c.LatestBlockHash,
                     TotalBlocks: c.TotalBlocks,

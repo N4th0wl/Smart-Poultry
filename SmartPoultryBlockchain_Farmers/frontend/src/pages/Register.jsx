@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Link, useNavigate } from 'react-router-dom'
-import { authService } from '../services'
+import { useAuth } from '../context/AuthContext'
 import '../styles/Register.css'
 
 const strengthMap = [
@@ -34,6 +34,7 @@ function getStrength(value) {
 
 function Register() {
   const navigate = useNavigate()
+  const { register } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -62,7 +63,7 @@ function Register() {
     setLoading(true)
 
     try {
-      await authService.register(email, password, farmName, farmLocation)
+      await register(email, password, farmName, farmLocation)
       toast.success('Registrasi Berhasil!')
       navigate('/dashboard')
     } catch (err) {

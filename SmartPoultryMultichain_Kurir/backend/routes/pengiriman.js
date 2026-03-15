@@ -172,6 +172,22 @@ router.post('/import', authMiddleware, async (req, res) => {
         });
 
         await transaction.commit();
+
+        // After successful import, update Processor's pengiriman status to DIKIRIM_KURIR
+        // This is a best-effort cross-DB update — does not block the response
+        if (tipePengiriman === 'PROCESSOR_TO_RETAILER' && id) {
+            try {
+                const procConn = getProcessorConnection();
+                await procConn.query(
+                    `UPDATE pengiriman SET StatusPengiriman = 'DIKIRIM_KURIR' WHERE KodePengiriman = :kodePengiriman AND StatusPengiriman IN ('DISIAPKAN', 'DIKIRIM')`,
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { kodePengiriman: id } }
+                );
+                console.log(`Updated Processor pengiriman ${id} status to DIKIRIM_KURIR`);
+            } catch (e) {
+                console.warn('Failed to update Processor pengiriman status (non-blocking):', e.message);
+            }
+        }
+
         res.status(201).json(shipment);
     } catch (error) {
         await transaction.rollback();
@@ -404,6 +420,25 @@ router.post('/:id/nota', authMiddleware, async (req, res) => {
         });
 
         await transaction.commit();
+
+        // After delivery, update Processor's pengiriman status to match (best-effort)
+        if (shipment.TipePengiriman === 'PROCESSOR_TO_RETAILER' && shipment.ReferensiEksternal) {
+            try {
+                const procConn = getProcessorConnection();
+                const newStatus = shipment.StatusPengiriman; // TERKIRIM or GAGAL
+                await procConn.query(
+                    `UPDATE pengiriman SET StatusPengiriman = :newStatus, TanggalSampai = :tanggalSampai WHERE KodePengiriman = :kodePengiriman`,
+                    {
+                        type: Sequelize.QueryTypes.UPDATE,
+                        replacements: { newStatus, tanggalSampai, kodePengiriman: shipment.ReferensiEksternal }
+                    }
+                );
+                console.log(`Updated Processor pengiriman ${shipment.ReferensiEksternal} status to ${newStatus}`);
+            } catch (e) {
+                console.warn('Failed to update Processor pengiriman status after delivery (non-blocking):', e.message);
+            }
+        }
+
         res.status(201).json(nota);
     } catch (error) {
         await transaction.rollback();

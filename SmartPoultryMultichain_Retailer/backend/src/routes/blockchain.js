@@ -101,65 +101,42 @@ router.get('/:id/trace', authMiddleware, async (req, res) => {
     }
 });
 
-// GET /api/blockchain/processor-chain/:kodeOrder — fetch processor chain info
-router.get('/processor-chain/:kodeOrder', authMiddleware, async (req, res) => {
+// GET /api/blockchain/upstream-chain/:kodePengiriman — fetch upstream kurir chain info
+router.get('/upstream-chain/:kodePengiriman', authMiddleware, async (req, res) => {
     try {
-        const kodeOrder = req.params.kodeOrder;
+        const kodePengiriman = req.params.kodePengiriman;
         const crossChain = require('../config/crossChainDatabase');
-        let processorData = null;
+        let kurirData = null;
 
-        // First try cross-chain module (proper connection)
+        // Try cross-chain module (proper connection)
         try {
-            const connected = await crossChain.testProcessorConnection();
+            const connected = await crossChain.testKurirConnection();
             if (connected) {
-                const chainData = await crossChain.getProcessorChainByOrder(kodeOrder);
-                if (chainData) {
-                    processorData = {
-                        identity: chainData.identity,
-                        blocks: chainData.blocks,
+                const blocks = await crossChain.getKurirBlocks(kodePengiriman);
+                if (blocks && blocks.length > 0) {
+                    kurirData = {
+                        kodePengiriman,
+                        blocks,
+                        totalBlocks: blocks.length,
+                        latestBlockHash: blocks[blocks.length - 1].CurrentHash,
                         found: true,
                     };
                 }
             }
         } catch (crossChainError) {
-            console.log('Cross-chain processor fetch failed, trying direct SQL:', crossChainError.message);
+            console.log('Cross-chain kurir fetch failed:', crossChainError.message);
         }
 
-        // Fallback: direct SQL (same MySQL server)
-        if (!processorData) {
-            try {
-                const [processorIdentity] = await sequelize.query(`
-                    SELECT bi.KodeIdentity, bi.IdProcessor, bi.GenesisHash,
-                           bi.LatestBlockHash, bi.TotalBlocks, bi.StatusChain
-                    FROM smartpoultry_processor.blockchainidentity bi
-                    LEFT JOIN smartpoultry_processor.orders o ON bi.IdOrder = o.IdOrder
-                    WHERE o.KodeOrder = :kodeOrder
-                `, {
-                    replacements: { kodeOrder },
-                    type: sequelize.QueryTypes.SELECT
-                });
-
-                if (processorIdentity) {
-                    processorData = {
-                        identity: processorIdentity,
-                        found: true,
-                    };
-                }
-            } catch (err) {
-                console.log('Could not fetch processor chain data:', err.message);
-            }
-        }
-
-        if (!processorData) {
+        if (!kurirData) {
             return res.json({
-                data: { found: false, message: 'Data chain processor tidak ditemukan.' }
+                data: { found: false, message: 'Data chain kurir tidak ditemukan.' }
             });
         }
 
-        res.json({ data: processorData });
+        res.json({ data: kurirData });
     } catch (error) {
-        console.error('Processor chain fetch error:', error);
-        res.status(500).json({ message: 'Gagal mengambil data chain processor.' });
+        console.error('Kurir chain fetch error:', error);
+        res.status(500).json({ message: 'Gagal mengambil data chain kurir.' });
     }
 });
 

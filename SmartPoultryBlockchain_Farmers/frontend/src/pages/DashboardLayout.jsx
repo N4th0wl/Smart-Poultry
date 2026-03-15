@@ -14,6 +14,7 @@ const navItems = [
   { to: '/dashboard/doc', label: 'DOC', keywords: ['doc', 'day old chick', 'bibit', 'ayam'] },
   { to: '/dashboard/kandang', label: 'Kandang', keywords: ['kandang', 'coop', 'cycle', 'monitoring'] },
   { to: '/dashboard/panen', label: 'Panen & Pengiriman', keywords: ['panen', 'harvest', 'pengiriman', 'delivery'] },
+  { to: '/dashboard/pesanan-processor', label: 'Pesanan Processor', keywords: ['pesanan', 'processor', 'order', 'pabrik'] },
   { to: '/dashboard/staff', label: 'Tim & Staff', keywords: ['staff', 'tim', 'team', 'karyawan'] },
 ]
 

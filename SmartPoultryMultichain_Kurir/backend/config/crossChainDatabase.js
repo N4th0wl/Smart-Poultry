@@ -231,12 +231,12 @@ async function validateProcessorChain(idIdentity) {
 // RETAILER BLOCKCHAIN DATA
 // ============================================================================
 
-async function getRetailerChainByProcessorOrder(kodeOrder) {
+async function getRetailerChainByKurirPengiriman(kodePengirimanKurir) {
     try {
         const conn = getRetailerConnection();
         const chains = await conn.query(
             `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
-                    bi.KodeProcessor, bi.KodeOrderProcessor, bi.ProcessorLastBlockHash,
+                    bi.KodeProcessor, bi.KodePengirimanKurir, bi.KurirLastBlockHash,
                     bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
                     bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
                     o.KodeOrder, o.NamaProcessor, o.NamaProduk,
@@ -244,9 +244,9 @@ async function getRetailerChainByProcessorOrder(kodeOrder) {
              FROM blockchainidentity bi
              LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
              LEFT JOIN retailer r ON bi.IdRetailer = r.IdRetailer
-             WHERE bi.KodeOrderProcessor = :kodeOrder
+             WHERE bi.KodePengirimanKurir = :kodePengirimanKurir
              ORDER BY bi.CreatedAt ASC LIMIT 5`,
-            { type: Sequelize.QueryTypes.SELECT, replacements: { kodeOrder } }
+            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengirimanKurir } }
         );
         return chains;
     } catch (error) {
@@ -277,7 +277,7 @@ async function validateRetailerChain(idIdentity) {
 
         // Get upstream hash reference for cross-chain continuity validation
         const [identity] = await conn.query(
-            `SELECT ProcessorLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
+            `SELECT KurirLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
             { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
         );
 
@@ -291,8 +291,8 @@ async function validateRetailerChain(idIdentity) {
             return { valid: false, message: 'No blocks found in Retailer chain', totalBlocks: 0 };
         }
 
-        // Use upstream hash as genesis previous hash for chain continuity
-        const genesisPrevHash = (identity && identity.ProcessorLastBlockHash) ? identity.ProcessorLastBlockHash : GENESIS_PREV_HASH;
+        // Use upstream hash (Kurir Leg 2) as genesis previous hash for chain continuity
+        const genesisPrevHash = (identity && identity.KurirLastBlockHash) ? identity.KurirLastBlockHash : GENESIS_PREV_HASH;
         let expectedPrevHash = genesisPrevHash;
 
         for (let i = 0; i < blocks.length; i++) {
@@ -303,9 +303,9 @@ async function validateRetailerChain(idIdentity) {
         }
         return {
             valid: true,
-            message: 'Retailer chain integrity verified \u2713',
+            message: 'Retailer chain integrity verified ✓',
             totalBlocks: blocks.length,
-            upstreamLinked: !!(identity && identity.ProcessorLastBlockHash)
+            upstreamLinked: !!(identity && identity.KurirLastBlockHash)
         };
     } catch (error) {
         return { valid: false, message: 'Cannot connect to Retailer database', totalBlocks: 0 };
@@ -448,29 +448,31 @@ async function getUnifiedChainByPengiriman(sequelizeKurir, kodePengiriman) {
                                     };
                                 }
 
-                                // ── SEGMENT 5: Retailer (cross-DB) ──
-                                try {
-                                    result.connectionStatus.retailer = await testRetailerConnection();
-                                    if (result.connectionStatus.retailer) {
-                                        const retChains = await getRetailerChainByProcessorOrder(kodeOrder);
-                                        if (retChains.length > 0) {
-                                            const rc = retChains[0];
-                                            const rb = await getRetailerBlocks(rc.IdIdentity);
-                                            const rv = await validateRetailerChain(rc.IdIdentity);
-                                            result.retailerChain = {
-                                                identity: {
-                                                    idIdentity: rc.IdIdentity, kodeIdentity: rc.KodeIdentity,
-                                                    kodeOrder: rc.KodeOrder, namaProcessor: rc.NamaProcessor,
-                                                    namaRetailer: rc.NamaRetailer, alamatRetailer: rc.AlamatRetailer,
-                                                    statusChain: rc.StatusChain, totalBlocks: rc.TotalBlocks,
-                                                    genesisHash: rc.GenesisHash, latestBlockHash: rc.LatestBlockHash,
-                                                    createdAt: rc.CreatedAt, completedAt: rc.CompletedAt
-                                                },
-                                                blocks: rb, validation: rv
-                                            };
+                                // ── SEGMENT 5: Retailer (cross-DB, lookup by kurir leg 2 pengiriman) ──
+                                if (result.kurirLeg2Chain && result.kurirLeg2Chain.identity.kodePengiriman) {
+                                    try {
+                                        result.connectionStatus.retailer = await testRetailerConnection();
+                                        if (result.connectionStatus.retailer) {
+                                            const retChains = await getRetailerChainByKurirPengiriman(result.kurirLeg2Chain.identity.kodePengiriman);
+                                            if (retChains.length > 0) {
+                                                const rc = retChains[0];
+                                                const rb = await getRetailerBlocks(rc.IdIdentity);
+                                                const rv = await validateRetailerChain(rc.IdIdentity);
+                                                result.retailerChain = {
+                                                    identity: {
+                                                        idIdentity: rc.IdIdentity, kodeIdentity: rc.KodeIdentity,
+                                                        kodeOrder: rc.KodeOrder, namaProcessor: rc.NamaProcessor,
+                                                        namaRetailer: rc.NamaRetailer, alamatRetailer: rc.AlamatRetailer,
+                                                        statusChain: rc.StatusChain, totalBlocks: rc.TotalBlocks,
+                                                        genesisHash: rc.GenesisHash, latestBlockHash: rc.LatestBlockHash,
+                                                        createdAt: rc.CreatedAt, completedAt: rc.CompletedAt
+                                                    },
+                                                    blocks: rb, validation: rv
+                                                };
+                                            }
                                         }
-                                    }
-                                } catch (e) { console.error('Unified: Retailer error -', e.message); }
+                                    } catch (e) { console.error('Unified: Retailer error -', e.message); }
+                                }
                             }
                         }
                     }
@@ -577,28 +579,30 @@ async function getUnifiedChainByPengiriman(sequelizeKurir, kodePengiriman) {
                     }
                 } catch (e) { console.error('Unified: Processor error -', e.message); }
 
-                // SEGMENT 5: Retailer
-                try {
-                    result.connectionStatus.retailer = await testRetailerConnection();
-                    if (result.connectionStatus.retailer) {
-                        const retChains = await getRetailerChainByProcessorOrder(processorKodeOrder);
-                        if (retChains.length > 0) {
-                            const rc = retChains[0];
-                            const rb = await getRetailerBlocks(rc.IdIdentity);
-                            const rv = await validateRetailerChain(rc.IdIdentity);
-                            result.retailerChain = {
-                                identity: {
-                                    idIdentity: rc.IdIdentity, kodeIdentity: rc.KodeIdentity,
-                                    kodeOrder: rc.KodeOrder, namaProcessor: rc.NamaProcessor,
-                                    namaRetailer: rc.NamaRetailer, statusChain: rc.StatusChain,
-                                    totalBlocks: rc.TotalBlocks, genesisHash: rc.GenesisHash,
-                                    latestBlockHash: rc.LatestBlockHash, createdAt: rc.CreatedAt
-                                },
-                                blocks: rb, validation: rv
-                            };
+                // SEGMENT 5: Retailer (lookup by Kurir Leg 2 pengiriman code)
+                if (result.kurirLeg2Chain && result.kurirLeg2Chain.identity.kodePengiriman) {
+                    try {
+                        result.connectionStatus.retailer = await testRetailerConnection();
+                        if (result.connectionStatus.retailer) {
+                            const retChains = await getRetailerChainByKurirPengiriman(result.kurirLeg2Chain.identity.kodePengiriman);
+                            if (retChains.length > 0) {
+                                const rc = retChains[0];
+                                const rb = await getRetailerBlocks(rc.IdIdentity);
+                                const rv = await validateRetailerChain(rc.IdIdentity);
+                                result.retailerChain = {
+                                    identity: {
+                                        idIdentity: rc.IdIdentity, kodeIdentity: rc.KodeIdentity,
+                                        kodeOrder: rc.KodeOrder, namaProcessor: rc.NamaProcessor,
+                                        namaRetailer: rc.NamaRetailer, statusChain: rc.StatusChain,
+                                        totalBlocks: rc.TotalBlocks, genesisHash: rc.GenesisHash,
+                                        latestBlockHash: rc.LatestBlockHash, createdAt: rc.CreatedAt
+                                    },
+                                    blocks: rb, validation: rv
+                                };
+                            }
                         }
-                    }
-                } catch (e) { console.error('Unified: Retailer error -', e.message); }
+                    } catch (e) { console.error('Unified: Retailer error -', e.message); }
+                }
             }
         }
     } catch (error) {
@@ -658,7 +662,7 @@ module.exports = {
     getProcessorChainByCycleFarm,
     getProcessorBlocks,
     validateProcessorChain,
-    getRetailerChainByProcessorOrder,
+    getRetailerChainByKurirPengiriman,
     getRetailerBlocks,
     validateRetailerChain,
     getUnifiedChainByPengiriman

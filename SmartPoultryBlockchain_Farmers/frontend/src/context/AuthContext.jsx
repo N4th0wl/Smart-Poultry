@@ -27,6 +27,13 @@ export function AuthProvider({ children }) {
         return response
     }, [])
 
+    const register = useCallback(async (email, password, farmName, farmLocation) => {
+        const response = await authService.register(email, password, farmName, farmLocation)
+        setUser(response.user)
+        setIsAuthenticated(true)
+        return response
+    }, [])
+
     const logout = useCallback(() => {
         authService.logout()
         setUser(null)
@@ -56,6 +63,7 @@ export function AuthProvider({ children }) {
         isAdmin,
         isUser,
         login,
+        register,
         logout,
         updateUser,
         hasPermission,

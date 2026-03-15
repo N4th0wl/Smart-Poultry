@@ -138,11 +138,12 @@ function parseBlocks(blocks) {
     });
 }
 
+const GENESIS_PREV_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+
 function validateChainIntegrity(blocks, label = 'Chain') {
     if (blocks.length === 0) {
         return { valid: false, message: `No blocks found in ${label}`, totalBlocks: 0 };
     }
-    const GENESIS_PREV_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
     let expectedPrevHash = GENESIS_PREV_HASH;
     for (let i = 0; i < blocks.length; i++) {
         if (blocks[i].PreviousHash !== expectedPrevHash) {
@@ -204,12 +205,38 @@ async function getProcessorChainByOrder(kodeOrderProcessor) {
 async function validateProcessorChain(idIdentity) {
     try {
         const conn = getProcessorConnection();
+
+        // Get upstream hash reference for cross-chain continuity validation
+        const [identity] = await conn.query(
+            `SELECT FarmLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
+            { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
+        );
+
         const blocks = await conn.query(
             `SELECT BlockIndex, CurrentHash, PreviousHash FROM ledger_processor
              WHERE IdIdentity = :idIdentity ORDER BY BlockIndex ASC`,
             { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
         );
-        return validateChainIntegrity(blocks, 'Processor chain');
+
+        if (blocks.length === 0) {
+            return { valid: false, message: 'No blocks found in Processor chain', totalBlocks: 0 };
+        }
+
+        const genesisPrevHash = (identity && identity.FarmLastBlockHash) ? identity.FarmLastBlockHash : GENESIS_PREV_HASH;
+        let expectedPrevHash = genesisPrevHash;
+
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].PreviousHash !== expectedPrevHash) {
+                return { valid: false, message: `Processor chain broken at block ${i}`, blockIndex: i, totalBlocks: blocks.length };
+            }
+            expectedPrevHash = blocks[i].CurrentHash;
+        }
+        return {
+            valid: true,
+            message: 'Processor chain integrity verified ✓',
+            totalBlocks: blocks.length,
+            upstreamLinked: !!(identity && identity.FarmLastBlockHash)
+        };
     } catch (error) {
         return { valid: false, message: 'Cannot connect to Processor database', totalBlocks: 0 };
     }
@@ -296,12 +323,38 @@ async function getKurirBlocks(kodePengiriman) {
 async function validateKurirChain(kodePengiriman) {
     try {
         const conn = getKurirConnection();
+
+        // Get upstream hash reference for cross-chain continuity validation
+        const [identity] = await conn.query(
+            `SELECT UpstreamChainHash FROM BlockchainIdentity WHERE KodePengiriman = :kodePengiriman LIMIT 1`,
+            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengiriman } }
+        );
+
         const blocks = await conn.query(
             `SELECT BlockIndex, CurrentHash, PreviousHash FROM ledger_kurir
              WHERE KodePengiriman = :kodePengiriman ORDER BY BlockIndex ASC`,
             { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengiriman } }
         );
-        return validateChainIntegrity(blocks, 'Kurir chain');
+
+        if (blocks.length === 0) {
+            return { valid: false, message: 'No blocks found in Kurir chain', totalBlocks: 0 };
+        }
+
+        const genesisPrevHash = (identity && identity.UpstreamChainHash) ? identity.UpstreamChainHash : GENESIS_PREV_HASH;
+        let expectedPrevHash = genesisPrevHash;
+
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].PreviousHash !== expectedPrevHash) {
+                return { valid: false, message: `Kurir chain broken at block ${i}`, blockIndex: i, totalBlocks: blocks.length };
+            }
+            expectedPrevHash = blocks[i].CurrentHash;
+        }
+        return {
+            valid: true,
+            message: 'Kurir chain integrity verified ✓',
+            totalBlocks: blocks.length,
+            upstreamLinked: !!(identity && identity.UpstreamChainHash)
+        };
     } catch (error) {
         return { valid: false, message: 'Cannot connect to Kurir database', totalBlocks: 0 };
     }
@@ -358,6 +411,21 @@ async function getKurirLeg2Chains(kodeOrder, processorName) {
 }
 
 // ============================================================================
+// RETAILER BLOCKCHAIN DATA (for reading our own retailer chain by kurir reference)
+// ============================================================================
+
+async function getRetailerChainByKurirPengiriman(kodePengirimanKurir) {
+    try {
+        // Query from local retailer DB (since this is running inside retailer node)
+        // This is used by other nodes to find retailer chain via kurir pengiriman reference
+        return { kodePengirimanKurir };
+    } catch (error) {
+        console.error('Retailer chain by kurir error -', error.message);
+        return null;
+    }
+}
+
+// ============================================================================
 // UNIFIED CROSS-CHAIN VIEW FOR RETAILER
 // Full supply chain: Peternakan → Kurir Leg 1 → Processor → Kurir Leg 2 → Retailer
 // ============================================================================
@@ -403,8 +471,8 @@ async function getUnifiedChainByOrder(sequelizeRetailer, idIdentity) {
                     namaProduk: retIdentity.NamaProduk,
                     namaRetailer: retIdentity.NamaRetailer,
                     alamatRetailer: retIdentity.AlamatRetailer,
-                    kodeOrderProcessor: retIdentity.KodeOrderProcessor,
-                    processorLastBlockHash: retIdentity.ProcessorLastBlockHash,
+                    kodePengirimanKurir: retIdentity.KodePengirimanKurir,
+                    kurirLastBlockHash: retIdentity.KurirLastBlockHash,
                     statusChain: retIdentity.StatusChain,
                     totalBlocks: retIdentity.TotalBlocks,
                     genesisHash: retIdentity.GenesisHash,
@@ -415,84 +483,123 @@ async function getUnifiedChainByOrder(sequelizeRetailer, idIdentity) {
                 blocks: parseBlocks(retBlocks)
             };
 
-            const kodeOrderProcessor = retIdentity.KodeOrderProcessor;
+            const kodePengirimanKurir = retIdentity.KodePengirimanKurir;
 
-            // ── SEGMENT 3: Processor chain (cross-DB) ──
-            if (kodeOrderProcessor) {
+            // ── SEGMENT 4: Kurir Leg 2 (cross-DB, find by pengiriman) ──
+            if (kodePengirimanKurir) {
                 try {
-                    result.connectionStatus.processor = await testProcessorConnection();
-                    if (result.connectionStatus.processor) {
-                        const procData = await getProcessorChainByOrder(kodeOrderProcessor);
-                        if (procData) {
-                            const procValidation = await validateProcessorChain(procData.identity.idIdentity);
-                            result.processorChain = { ...procData, validation: procValidation };
+                    result.connectionStatus.kurir = await testKurirConnection();
+                    if (result.connectionStatus.kurir) {
+                        const conn = getKurirConnection();
 
-                            const kodeCycleFarm = procData.identity.kodeCycleFarm;
-                            const kodeOrder = procData.identity.kodeOrder;
-                            const namaPeternakan = procData.identity.namaPeternakan;
+                        // Find Kurir Leg 2 identity by KodePengiriman
+                        const [leg2Identity] = await conn.query(
+                            `SELECT bi.*, pk.NamaPerusahaan, pk.AlamatPerusahaan,
+                                    p.AsalPengirim, p.TujuanPenerima, p.TipePengiriman, p.ReferensiEksternal, p.UpstreamCycleId
+                             FROM BlockchainIdentity bi
+                             LEFT JOIN PerusahaanKurir pk ON bi.KodePerusahaan = pk.KodePerusahaan
+                             LEFT JOIN Pengiriman p ON bi.KodePengiriman = p.KodePengiriman
+                             WHERE bi.KodePengiriman = :kodePengirimanKurir`,
+                            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengirimanKurir } }
+                        );
 
-                            // ── SEGMENT 1: Peternakan chain (cross-DB) ──
-                            if (kodeCycleFarm) {
+                        if (leg2Identity) {
+                            const l2b = await getKurirBlocks(leg2Identity.KodePengiriman);
+                            const l2v = await validateKurirChain(leg2Identity.KodePengiriman);
+                            result.kurirLeg2Chain = {
+                                leg: 2, tipePengiriman: 'PROCESSOR_TO_RETAILER',
+                                identity: {
+                                    kodeIdentity: leg2Identity.KodeIdentity, kodePengiriman: leg2Identity.KodePengiriman,
+                                    namaPerusahaan: leg2Identity.NamaPerusahaan, statusChain: leg2Identity.StatusChain,
+                                    totalBlocks: leg2Identity.TotalBlocks, asalPengirim: leg2Identity.AsalPengirim,
+                                    tujuanPenerima: leg2Identity.TujuanPenerima, createdAt: leg2Identity.CreatedAt
+                                },
+                                blocks: l2b, validation: l2v
+                            };
+
+                            // From Kurir Leg 2, trace back to Processor via ReferensiEksternal
+                            const processorKodePengiriman = leg2Identity.ReferensiEksternal;
+                            const upstreamCycleId = leg2Identity.UpstreamCycleId;
+
+                            // ── SEGMENT 3: Processor chain (cross-DB) ──
+                            if (processorKodePengiriman) {
                                 try {
-                                    result.connectionStatus.peternakan = await testPeternakanConnection();
-                                    if (result.connectionStatus.peternakan) {
-                                        const farmData = await getPeternakanChainByCycle(kodeCycleFarm);
-                                        if (farmData) {
-                                            const farmValidation = await validatePeternakanChain(kodeCycleFarm);
-                                            result.peternakanChain = { ...farmData, validation: farmValidation };
-                                        }
-                                    }
-                                } catch (e) { console.error('Unified: Peternakan error -', e.message); }
+                                    result.connectionStatus.processor = await testProcessorConnection();
+                                    if (result.connectionStatus.processor) {
+                                        const procConn = getProcessorConnection();
+                                        // Find processor identity via pengiriman
+                                        const [procIdentity] = await procConn.query(
+                                            `SELECT bi.*, o.KodeOrder, o.NamaPeternakan, o.JenisAyam
+                                             FROM blockchainidentity bi
+                                             LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
+                                             LEFT JOIN pengiriman pg ON pg.IdProduksi IN (
+                                                 SELECT IdProduksi FROM produksi WHERE IdOrder = o.IdOrder
+                                             )
+                                             WHERE pg.KodePengiriman = :kodePengiriman`,
+                                            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengiriman: processorKodePengiriman } }
+                                        );
 
-                                // ── SEGMENT 2: Kurir Leg 1 (cross-DB) ──
-                                try {
-                                    result.connectionStatus.kurir = await testKurirConnection();
-                                    if (result.connectionStatus.kurir) {
-                                        const kurirChains = await getKurirChainsByUpstream(kodeCycleFarm, 'FARM_TO_PROCESSOR');
-                                        if (kurirChains.length > 0) {
-                                            const kc = kurirChains[0];
-                                            const kb = await getKurirBlocks(kc.KodePengiriman);
-                                            const kv = await validateKurirChain(kc.KodePengiriman);
-                                            result.kurirLeg1Chain = {
-                                                leg: 1, tipePengiriman: 'FARM_TO_PROCESSOR',
+                                        if (procIdentity) {
+                                            const procBlocks = await procConn.query(
+                                                `SELECT IdBlock, KodeBlock, BlockIndex, TipeBlock, PreviousHash, CurrentHash,
+                                                        DataPayload, Nonce, StatusBlock, CreatedAt, ValidatedAt
+                                                 FROM ledger_processor WHERE IdIdentity = :idIdentity ORDER BY BlockIndex ASC`,
+                                                { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity: procIdentity.IdIdentity } }
+                                            );
+                                            const procValidation = await validateProcessorChain(procIdentity.IdIdentity);
+                                            result.processorChain = {
                                                 identity: {
-                                                    kodeIdentity: kc.KodeIdentity, kodePengiriman: kc.KodePengiriman,
-                                                    namaPerusahaan: kc.NamaPerusahaan, statusChain: kc.StatusChain,
-                                                    totalBlocks: kc.TotalBlocks, asalPengirim: kc.AsalPengirim,
-                                                    tujuanPenerima: kc.TujuanPenerima, createdAt: kc.CreatedAt
+                                                    idIdentity: procIdentity.IdIdentity, kodeIdentity: procIdentity.KodeIdentity,
+                                                    kodeOrder: procIdentity.KodeOrder, kodeCycleFarm: procIdentity.KodeCycleFarm,
+                                                    namaPeternakan: procIdentity.NamaPeternakan, statusChain: procIdentity.StatusChain,
+                                                    totalBlocks: procIdentity.TotalBlocks, genesisHash: procIdentity.GenesisHash,
+                                                    latestBlockHash: procIdentity.LatestBlockHash, createdAt: procIdentity.CreatedAt
                                                 },
-                                                blocks: kb, validation: kv
+                                                blocks: parseBlocks(procBlocks), validation: procValidation
                                             };
+
+                                            const kodeCycleFarm = procIdentity.KodeCycleFarm;
+
+                                            // ── SEGMENT 1: Peternakan chain (cross-DB) ──
+                                            if (kodeCycleFarm) {
+                                                try {
+                                                    result.connectionStatus.peternakan = await testPeternakanConnection();
+                                                    if (result.connectionStatus.peternakan) {
+                                                        const farmData = await getPeternakanChainByCycle(kodeCycleFarm);
+                                                        if (farmData) {
+                                                            const farmValidation = await validatePeternakanChain(kodeCycleFarm);
+                                                            result.peternakanChain = { ...farmData, validation: farmValidation };
+                                                        }
+                                                    }
+                                                } catch (e) { console.error('Unified: Peternakan error -', e.message); }
+
+                                                // ── SEGMENT 2: Kurir Leg 1 (cross-DB) ──
+                                                try {
+                                                    const kurirChains = await getKurirChainsByUpstream(kodeCycleFarm, 'FARM_TO_PROCESSOR');
+                                                    if (kurirChains.length > 0) {
+                                                        const kc = kurirChains[0];
+                                                        const kb = await getKurirBlocks(kc.KodePengiriman);
+                                                        const kv = await validateKurirChain(kc.KodePengiriman);
+                                                        result.kurirLeg1Chain = {
+                                                            leg: 1, tipePengiriman: 'FARM_TO_PROCESSOR',
+                                                            identity: {
+                                                                kodeIdentity: kc.KodeIdentity, kodePengiriman: kc.KodePengiriman,
+                                                                namaPerusahaan: kc.NamaPerusahaan, statusChain: kc.StatusChain,
+                                                                totalBlocks: kc.TotalBlocks, asalPengirim: kc.AsalPengirim,
+                                                                tujuanPenerima: kc.TujuanPenerima, createdAt: kc.CreatedAt
+                                                            },
+                                                            blocks: kb, validation: kv
+                                                        };
+                                                    }
+                                                } catch (e) { console.error('Unified: Kurir Leg1 error -', e.message); }
+                                            }
                                         }
                                     }
-                                } catch (e) { console.error('Unified: Kurir Leg1 error -', e.message); }
+                                } catch (e) { console.error('Unified: Processor error -', e.message); }
                             }
-
-                            // ── SEGMENT 4: Kurir Leg 2 (cross-DB) ──
-                            try {
-                                if (!result.connectionStatus.kurir) result.connectionStatus.kurir = await testKurirConnection();
-                                if (result.connectionStatus.kurir) {
-                                    const leg2Chains = await getKurirLeg2Chains(kodeOrder, namaPeternakan);
-                                    if (leg2Chains.length > 0) {
-                                        const l2 = leg2Chains[0];
-                                        const l2b = await getKurirBlocks(l2.KodePengiriman);
-                                        const l2v = await validateKurirChain(l2.KodePengiriman);
-                                        result.kurirLeg2Chain = {
-                                            leg: 2, tipePengiriman: 'PROCESSOR_TO_RETAILER',
-                                            identity: {
-                                                kodeIdentity: l2.KodeIdentity, kodePengiriman: l2.KodePengiriman,
-                                                namaPerusahaan: l2.NamaPerusahaan, statusChain: l2.StatusChain,
-                                                totalBlocks: l2.TotalBlocks, asalPengirim: l2.AsalPengirim,
-                                                tujuanPenerima: l2.TujuanPenerima, createdAt: l2.CreatedAt
-                                            },
-                                            blocks: l2b, validation: l2v
-                                        };
-                                    }
-                                }
-                            } catch (e) { console.error('Unified: Kurir Leg2 error -', e.message); }
                         }
                     }
-                } catch (e) { console.error('Unified: Processor error -', e.message); }
+                } catch (e) { console.error('Unified: Kurir Leg2 error -', e.message); }
             }
         }
     } catch (error) {

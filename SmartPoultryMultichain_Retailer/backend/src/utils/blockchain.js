@@ -2,8 +2,8 @@
 // BLOCKCHAIN HELPER - Application-Level Blockchain for Node Retailer
 // ============================================================================
 // Mirrors the Processor website's blockchain pattern.
-// Block identity = Order (linked to Processor's chain)
-// Multi-chain: Peternakan → Processor → Retailer
+// Block identity = Order (linked to Kurir Leg 2's chain)
+// Multi-chain: Peternakan → Kurir Leg1 → Processor → Kurir Leg2 → Retailer
 // ============================================================================
 
 const crypto = require('crypto');
@@ -21,7 +21,7 @@ function generateHash(blockIndex, previousHash, tipeBlock, dataPayload, timestam
 
 /**
  * Get the previous hash for a given identity chain.
- * If no blocks exist yet (genesis), returns the upstream (Processor) last block hash
+ * If no blocks exist yet (genesis), returns the upstream (Kurir Leg 2) last block hash
  * to maintain cross-chain hash continuity.
  */
 async function getPreviousHash(sequelize, idIdentity, transaction = null) {
@@ -37,14 +37,14 @@ async function getPreviousHash(sequelize, idIdentity, transaction = null) {
 
     if (result) return result.CurrentHash;
 
-    // No blocks yet - check if there's an upstream (Processor) chain hash for continuity
+    // No blocks yet - check if there's an upstream (Kurir Leg 2) chain hash for continuity
     const [identity] = await sequelize.query(
-        `SELECT ProcessorLastBlockHash FROM blockchainidentity 
+        `SELECT KurirLastBlockHash FROM blockchainidentity 
          WHERE IdIdentity = :idIdentity LIMIT 1`,
         { ...opts, replacements: { idIdentity } }
     );
 
-    return (identity && identity.ProcessorLastBlockHash) ? identity.ProcessorLastBlockHash : GENESIS_PREV_HASH;
+    return (identity && identity.KurirLastBlockHash) ? identity.KurirLastBlockHash : GENESIS_PREV_HASH;
 }
 
 /**
@@ -127,13 +127,13 @@ async function createBlock(sequelize, { idIdentity, idOrder, idGudang, idPenjual
 // ============================================================================
 
 /**
- * RECEIVE_FROM_PROCESSOR BLOCK (Genesis) — When order is received from processor
+ * RECEIVE_FROM_COURIER BLOCK (Genesis) — When order is received from courier (Kurir Leg 2)
  */
-async function createReceiveFromProcessorBlock(sequelize, {
+async function createReceiveFromCourierBlock(sequelize, {
     idIdentity, idOrder, kodeBlock,
     kodeOrder, namaProcessor, namaProduk,
     jumlahDiterima, penerimaOrder, tanggalDiterima, kondisiTerima,
-    kodeOrderProcessor, processorLastBlockHash,
+    kodePengirimanKurir, kurirLastBlockHash,
     transaction = null
 }) {
     return await createBlock(sequelize, {
@@ -141,10 +141,10 @@ async function createReceiveFromProcessorBlock(sequelize, {
         idOrder,
         idGudang: null,
         idPenjualan: null,
-        tipeBlock: 'RECEIVE_FROM_PROCESSOR',
+        tipeBlock: 'RECEIVE_FROM_COURIER',
         kodeBlock,
         dataPayload: {
-            event: 'RECEIVE_FROM_PROCESSOR',
+            event: 'RECEIVE_FROM_COURIER',
             node: 'NODE_RETAILER',
             kode_order: kodeOrder,
             nama_processor: namaProcessor,
@@ -153,10 +153,10 @@ async function createReceiveFromProcessorBlock(sequelize, {
             penerima_order: penerimaOrder,
             tanggal_diterima: tanggalDiterima,
             kondisi_terima: kondisiTerima,
-            link_processor_chain: {
-                kode_order_processor: kodeOrderProcessor || null,
-                processor_last_block_hash: processorLastBlockHash || null,
-                previous_node: 'NODE_PROCESSOR'
+            link_kurir_chain: {
+                kode_pengiriman_kurir: kodePengirimanKurir || null,
+                kurir_last_block_hash: kurirLastBlockHash || null,
+                previous_node: 'NODE_KURIR'
             }
         },
         transaction
@@ -168,7 +168,7 @@ async function createReceiveFromProcessorBlock(sequelize, {
  */
 async function createNotaPenerimaanBlock(sequelize, {
     idIdentity, idOrder, kodeBlock,
-    kodeNotaPenerimaan, kodeNotaPengirimanProcessor,
+    kodeNotaPenerimaan, kodeNotaPengirimanKurir,
     namaPengirim, namaPenerima,
     jumlahDikirim, jumlahDiterima, jumlahRusak,
     kondisiBarang, suhuSaatTerima, tanggalPenerimaan,
@@ -185,7 +185,7 @@ async function createNotaPenerimaanBlock(sequelize, {
             event: 'NOTA_PENERIMAAN',
             node: 'NODE_RETAILER',
             kode_nota_penerimaan: kodeNotaPenerimaan,
-            kode_nota_pengiriman_processor: kodeNotaPengirimanProcessor || null,
+            kode_nota_pengiriman_kurir: kodeNotaPengirimanKurir || null,
             nama_pengirim: namaPengirim,
             nama_penerima: namaPenerima,
             jumlah_dikirim: jumlahDikirim,
@@ -263,7 +263,7 @@ async function createSaleRecordedBlock(sequelize, {
 
 /**
  * Validate chain integrity for an identity.
- * Takes into account the upstream (Processor) chain hash for cross-chain continuity.
+ * Takes into account the upstream (Kurir Leg 2) chain hash for cross-chain continuity.
  */
 async function validateChain(sequelize, idIdentity) {
     const blocks = await sequelize.query(
@@ -278,14 +278,14 @@ async function validateChain(sequelize, idIdentity) {
         return { valid: false, message: 'No blocks found', totalBlocks: 0 };
     }
 
-    // Get the upstream (Processor) chain hash to know what the genesis block's PreviousHash should be
+    // Get the upstream (Kurir Leg 2) chain hash to know what the genesis block's PreviousHash should be
     const [identity] = await sequelize.query(
-        `SELECT ProcessorLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
+        `SELECT KurirLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
         { type: sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
     );
 
-    // If ProcessorLastBlockHash exists, the genesis block should start from it (chain continuity)
-    let expectedPrevHash = (identity && identity.ProcessorLastBlockHash) ? identity.ProcessorLastBlockHash : GENESIS_PREV_HASH;
+    // If KurirLastBlockHash exists, the genesis block should start from it (chain continuity)
+    let expectedPrevHash = (identity && identity.KurirLastBlockHash) ? identity.KurirLastBlockHash : GENESIS_PREV_HASH;
 
     for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
@@ -295,7 +295,7 @@ async function validateChain(sequelize, idIdentity) {
                 message: `Chain broken at block ${i}: Previous hash mismatch.`,
                 blockIndex: i,
                 totalBlocks: blocks.length,
-                upstreamLinked: !!(identity && identity.ProcessorLastBlockHash)
+                upstreamLinked: !!(identity && identity.KurirLastBlockHash)
             };
         }
         expectedPrevHash = block.CurrentHash;
@@ -305,8 +305,8 @@ async function validateChain(sequelize, idIdentity) {
         valid: true,
         message: 'Chain integrity verified ✓',
         totalBlocks: blocks.length,
-        upstreamLinked: !!(identity && identity.ProcessorLastBlockHash),
-        upstreamHash: identity?.ProcessorLastBlockHash || null
+        upstreamLinked: !!(identity && identity.KurirLastBlockHash),
+        upstreamHash: identity?.KurirLastBlockHash || null
     };
 }
 
@@ -358,17 +358,17 @@ async function getTraceabilityData(sequelize, idIdentity) {
             totalBlocks: identity.TotalBlocks,
             createdAt: identity.CreatedAt,
             completedAt: identity.CompletedAt,
-            processorLink: {
-                kodeOrderProcessor: identity.KodeOrderProcessor,
+            kurirLink: {
+                kodePengirimanKurir: identity.KodePengirimanKurir,
                 kodeProcessor: identity.KodeProcessor,
-                processorLastBlockHash: identity.ProcessorLastBlockHash
+                kurirLastBlockHash: identity.KurirLastBlockHash
             }
         },
         blocks,
         timeline,
         validation,
         nodeType: 'NODE_RETAILER',
-        nodeDescription: 'Retailer (Third Node in Supply Chain)'
+        nodeDescription: 'Retailer (Final Node in Supply Chain)'
     };
 }
 
@@ -377,8 +377,8 @@ async function getTraceabilityData(sequelize, idIdentity) {
  */
 function getBlockSummary(tipeBlock, payload) {
     switch (tipeBlock) {
-        case 'RECEIVE_FROM_PROCESSOR':
-            return `Diterima dari ${payload.nama_processor || '?'}: ${payload.jumlah_diterima || '?'} unit`;
+        case 'RECEIVE_FROM_COURIER':
+            return `Diterima dari kurir (asal: ${payload.nama_processor || '?'}): ${payload.jumlah_diterima || '?'} unit`;
         case 'NOTA_PENERIMAAN':
             return `Nota penerimaan: ${payload.jumlah_diterima || '?'} diterima, ${payload.jumlah_rusak || 0} rusak`;
         case 'STOCK_IN':
@@ -395,7 +395,7 @@ function getBlockSummary(tipeBlock, payload) {
 module.exports = {
     generateHash,
     createBlock,
-    createReceiveFromProcessorBlock,
+    createReceiveFromCourierBlock,
     createNotaPenerimaanBlock,
     createStockInBlock,
     createSaleRecordedBlock,

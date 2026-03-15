@@ -327,12 +327,12 @@ async function getKurirLeg2Chains(kodeOrder, processorName) {
 // RETAILER BLOCKCHAIN DATA
 // ============================================================================
 
-async function getRetailerChainByProcessorOrder(kodeOrder) {
+async function getRetailerChainByKurirPengiriman(kodePengirimanKurir) {
     try {
         const conn = getRetailerConnection();
         const chains = await conn.query(
             `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
-                    bi.KodeProcessor, bi.KodeOrderProcessor, bi.ProcessorLastBlockHash,
+                    bi.KodeProcessor, bi.KodePengirimanKurir, bi.KurirLastBlockHash,
                     bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
                     bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
                     o.KodeOrder, o.NamaProcessor, o.NamaProduk,
@@ -340,9 +340,9 @@ async function getRetailerChainByProcessorOrder(kodeOrder) {
              FROM blockchainidentity bi
              LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
              LEFT JOIN retailer r ON bi.IdRetailer = r.IdRetailer
-             WHERE bi.KodeOrderProcessor = :kodeOrder
+             WHERE bi.KodePengirimanKurir = :kodePengirimanKurir
              ORDER BY bi.CreatedAt ASC LIMIT 5`,
-            { type: Sequelize.QueryTypes.SELECT, replacements: { kodeOrder } }
+            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengirimanKurir } }
         );
         return chains;
     } catch (error) {
@@ -373,7 +373,7 @@ async function validateRetailerChain(idIdentity) {
 
         // Get upstream hash reference for cross-chain continuity validation
         const [identity] = await conn.query(
-            `SELECT ProcessorLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
+            `SELECT KurirLastBlockHash FROM blockchainidentity WHERE IdIdentity = :idIdentity LIMIT 1`,
             { type: Sequelize.QueryTypes.SELECT, replacements: { idIdentity } }
         );
 
@@ -387,8 +387,8 @@ async function validateRetailerChain(idIdentity) {
             return { valid: false, message: 'No blocks found in Retailer chain', totalBlocks: 0 };
         }
 
-        // Use upstream hash as genesis previous hash for chain continuity
-        const genesisPrevHash = (identity && identity.ProcessorLastBlockHash) ? identity.ProcessorLastBlockHash : '0000000000000000000000000000000000000000000000000000000000000000';
+        // Use upstream hash (Kurir Leg 2) as genesis previous hash for chain continuity
+        const genesisPrevHash = (identity && identity.KurirLastBlockHash) ? identity.KurirLastBlockHash : '0000000000000000000000000000000000000000000000000000000000000000';
         let expectedPrevHash = genesisPrevHash;
 
         for (let i = 0; i < blocks.length; i++) {
@@ -401,7 +401,7 @@ async function validateRetailerChain(idIdentity) {
             valid: true,
             message: 'Retailer chain integrity verified \u2713',
             totalBlocks: blocks.length,
-            upstreamLinked: !!(identity && identity.ProcessorLastBlockHash)
+            upstreamLinked: !!(identity && identity.KurirLastBlockHash)
         };
     } catch (error) {
         return { valid: false, message: 'Cannot connect to Retailer database', totalBlocks: 0 };
@@ -529,12 +529,12 @@ async function getUnifiedChainByOrder(sequelizeProcessor, idIdentity) {
                 }
             } catch (e) { console.error('Unified: Kurir Leg2 error -', e.message); }
 
-            // ── SEGMENT 5: Retailer chain (cross-DB) ──
-            if (kodeOrder) {
+            // ── SEGMENT 5: Retailer chain (cross-DB, lookup by kurir leg 2 pengiriman) ──
+            if (result.kurirLeg2Chain && result.kurirLeg2Chain.identity.kodePengiriman) {
                 try {
                     result.connectionStatus.retailer = await testRetailerConnection();
                     if (result.connectionStatus.retailer) {
-                        const retChains = await getRetailerChainByProcessorOrder(kodeOrder);
+                        const retChains = await getRetailerChainByKurirPengiriman(result.kurirLeg2Chain.identity.kodePengiriman);
                         if (retChains.length > 0) {
                             const rc = retChains[0];
                             const rb = await getRetailerBlocks(rc.IdIdentity);
@@ -617,7 +617,7 @@ module.exports = {
     getKurirBlocks,
     validateKurirChain,
     getKurirLeg2Chains,
-    getRetailerChainByProcessorOrder,
+    getRetailerChainByKurirPengiriman,
     getRetailerBlocks,
     validateRetailerChain,
     getUnifiedChainByOrder

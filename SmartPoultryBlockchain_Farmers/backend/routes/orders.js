@@ -4,9 +4,74 @@ const router = express.Router();
 const { Orders, DetailOrder, Supplier, NotaPenerimaan, MasterObat, sequelize } = require('../models');
 const { authMiddleware } = require('../middleware/auth');
 const { generateKodeOrder, generateKodeDetailOrder, generateKodePenerimaan, generateKodeDetailNota, generateKodeDOC, generateKodeWarehouse, generateKodePerlengkapan } = require('../utils/codeGenerator');
+const { getProcessorConnection } = require('../config/crossChainDatabase');
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
+
+// =====================================================
+// PESANAN DARI PROCESSOR (CROSS-DB) — MUST BE BEFORE /:id
+// =====================================================
+
+// GET /api/orders/processor-orders - Fetch incoming orders from Processor database
+router.get('/processor-orders', async (req, res) => {
+    try {
+        const procConn = getProcessorConnection();
+        const orders = await procConn.query(
+            `SELECT o.IdOrder, o.KodeOrder, o.NamaPeternakan, o.AlamatPeternakan,
+                    o.KontakPeternakan, o.JenisAyam, o.JumlahPesanan, o.Satuan,
+                    o.TanggalOrder, o.TanggalDibutuhkan, o.HargaSatuan, o.TotalHarga,
+                    o.StatusOrder, o.Catatan, o.CreatedAt,
+                    p.NamaProcessor
+             FROM orders o
+             LEFT JOIN processor p ON o.IdProcessor = p.IdProcessor
+             ORDER BY o.CreatedAt DESC`,
+            { type: Sequelize.QueryTypes.SELECT }
+        );
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.error('Get processor orders error:', error);
+        res.status(500).json({ success: false, error: 'Gagal mengambil data pesanan dari Processor.' });
+    }
+});
+
+// PUT /api/orders/processor-orders/:id/confirm - Confirm a processor order
+router.put('/processor-orders/:id/confirm', async (req, res) => {
+    try {
+        const procConn = getProcessorConnection();
+        const { id } = req.params;
+
+        // Update the order status in the Processor database
+        await procConn.query(
+            `UPDATE orders SET StatusOrder = 'CONFIRMED', UpdatedAt = NOW() WHERE IdOrder = :id AND StatusOrder = 'PENDING'`,
+            { replacements: { id }, type: Sequelize.QueryTypes.UPDATE }
+        );
+
+        res.json({ success: true, message: 'Pesanan berhasil dikonfirmasi. Status diubah ke CONFIRMED.' });
+    } catch (error) {
+        console.error('Confirm processor order error:', error);
+        res.status(500).json({ success: false, error: 'Gagal mengkonfirmasi pesanan.' });
+    }
+});
+
+// PUT /api/orders/processor-orders/:id/ship - Mark a processor order as DIKIRIM
+router.put('/processor-orders/:id/ship', async (req, res) => {
+    try {
+        const procConn = getProcessorConnection();
+        const { id } = req.params;
+
+        // Update the order status in the Processor database to DIKIRIM
+        await procConn.query(
+            `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW() WHERE IdOrder = :id AND StatusOrder = 'CONFIRMED'`,
+            { replacements: { id }, type: Sequelize.QueryTypes.UPDATE }
+        );
+
+        res.json({ success: true, message: 'Pesanan ditandai sebagai DIKIRIM.' });
+    } catch (error) {
+        console.error('Ship processor order error:', error);
+        res.status(500).json({ success: false, error: 'Gagal mengupdate status pengiriman.' });
+    }
+});
 
 // =====================================================
 // NOTA PENERIMAAN ROUTES (MUST BE BEFORE /:id)

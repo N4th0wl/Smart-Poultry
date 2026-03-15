@@ -81,7 +81,7 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 });
 
-// PUT /api/orders/:id/terima — mark order as received, create blockchain
+// PUT /api/orders/:id/terima — mark order as received from Kurir Leg 2, create blockchain
 router.put('/:id/terima', authMiddleware, async (req, res) => {
     const t = await sequelize.transaction();
     try {
@@ -93,7 +93,7 @@ router.put('/:id/terima', authMiddleware, async (req, res) => {
 
         const {
             penerimaOrder, jumlahDiterima, kondisiTerima,
-            kodeOrderProcessor, processorLastBlockHash
+            kodePengirimanKurir, kurirLastBlockHash
         } = req.body;
 
         await order.update({
@@ -107,27 +107,27 @@ router.put('/:id/terima', authMiddleware, async (req, res) => {
         // Create blockchain identity
         const kodeIdentity = await generateKodeIdentity(sequelize, t);
 
-        // Use Processor's last block hash as genesis PreviousHash for cross-chain continuity
+        // Use Kurir Leg 2's last block hash as genesis PreviousHash for cross-chain continuity
         // Only the very first node (Peternakan) starts from 000...000
-        const genesisPrevHash = processorLastBlockHash || blockchain.GENESIS_PREV_HASH;
-        const genesisHash = blockchain.generateHash(0, genesisPrevHash, 'RECEIVE_FROM_PROCESSOR', {}, new Date().toISOString(), 0);
+        const genesisPrevHash = kurirLastBlockHash || blockchain.GENESIS_PREV_HASH;
+        const genesisHash = blockchain.generateHash(0, genesisPrevHash, 'RECEIVE_FROM_COURIER', {}, new Date().toISOString(), 0);
 
         const identity = await BlockchainIdentity.create({
             KodeIdentity: kodeIdentity,
             IdOrder: order.IdOrder,
             IdRetailer: req.user.idRetailer,
             KodeProcessor: null,
-            KodeOrderProcessor: kodeOrderProcessor || null,
-            ProcessorLastBlockHash: processorLastBlockHash || null,
+            KodePengirimanKurir: kodePengirimanKurir || null,
+            KurirLastBlockHash: kurirLastBlockHash || null,
             GenesisHash: genesisHash,
             LatestBlockHash: null,
             TotalBlocks: 0,
             StatusChain: 'ACTIVE',
         }, { transaction: t });
 
-        // Create genesis block
+        // Create genesis block (RECEIVE_FROM_COURIER)
         const kodeBlock = await generateKodeBlock(sequelize, t);
-        await blockchain.createReceiveFromProcessorBlock(sequelize, {
+        await blockchain.createReceiveFromCourierBlock(sequelize, {
             idIdentity: identity.IdIdentity,
             idOrder: order.IdOrder,
             kodeBlock,
@@ -138,13 +138,13 @@ router.put('/:id/terima', authMiddleware, async (req, res) => {
             penerimaOrder: penerimaOrder || req.user.nama,
             tanggalDiterima: new Date().toISOString().split('T')[0],
             kondisiTerima: kondisiTerima || 'Baik',
-            kodeOrderProcessor: kodeOrderProcessor || null,
-            processorLastBlockHash: processorLastBlockHash || null,
+            kodePengirimanKurir: kodePengirimanKurir || null,
+            kurirLastBlockHash: kurirLastBlockHash || null,
             transaction: t
         });
 
         await t.commit();
-        res.json({ message: 'Order berhasil diterima dan blockchain dibuat.', data: order });
+        res.json({ message: 'Order berhasil diterima dari kurir dan blockchain dibuat.', data: order });
     } catch (error) {
         await t.rollback();
         console.error('Terima order error:', error);

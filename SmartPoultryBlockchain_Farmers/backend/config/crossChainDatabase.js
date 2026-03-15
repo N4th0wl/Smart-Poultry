@@ -333,7 +333,7 @@ async function getAllRetailerChains() {
         const conn = getRetailerConnection();
         const chains = await conn.query(
             `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
-                    bi.KodeProcessor, bi.KodeOrderProcessor, bi.ProcessorLastBlockHash,
+                    bi.KodeProcessor, bi.KodePengirimanKurir, bi.KurirLastBlockHash,
                     bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
                     bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
                     o.KodeOrder, o.NamaProcessor, o.NamaProduk, o.TanggalOrder,
@@ -678,23 +678,41 @@ async function getUnifiedChainByCycle(sequelizePeternakan, kodeCycle) {
         console.error('Unified chain: Kurir Leg 2 error -', error.message);
     }
 
-    // ── SEGMENT 5: Retailer chain (cross-DB) ──
+    // ── SEGMENT 5: Retailer chain (cross-DB, lookup by Kurir Leg 2 pengiriman) ──
     try {
         result.connectionStatus.retailer = await testRetailerConnection();
         if (result.connectionStatus.retailer) {
             const conn = getRetailerConnection();
 
-            // Try to find Retailer chain linked to the Processor's order
+            // Try to find Retailer chain linked via Kurir Leg 2 pengiriman code
             let retailerChains = [];
 
-            if (result.processorChain) {
-                const kodeOrder = result.processorChain.identity.kodeOrder;
+            // Method 1: Find by KodePengirimanKurir (precise link via Kurir Leg 2)
+            if (result.kurirLeg2Chain && result.kurirLeg2Chain.identity.kodePengiriman) {
+                retailerChains = await conn.query(
+                    `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
+                            bi.KodeProcessor, bi.KodePengirimanKurir, bi.KurirLastBlockHash,
+                            bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
+                            bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
+                            o.KodeOrder, o.NamaProcessor, o.NamaProduk,
+                            r.NamaRetailer, r.AlamatRetailer
+                     FROM blockchainidentity bi
+                     LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
+                     LEFT JOIN retailer r ON bi.IdRetailer = r.IdRetailer
+                     WHERE bi.KodePengirimanKurir = :kodePengirimanKurir
+                     ORDER BY bi.CreatedAt ASC
+                     LIMIT 5`,
+                    { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengirimanKurir: result.kurirLeg2Chain.identity.kodePengiriman } }
+                );
+            }
 
-                // Method 1: Find by KodeOrderProcessor matching processor's order code
-                if (kodeOrder) {
+            // Method 2: Fallback - find by NamaProcessor
+            if (retailerChains.length === 0 && result.processorChain) {
+                const processorName = result.processorChain.identity.namaPeternakan;
+                if (processorName) {
                     retailerChains = await conn.query(
                         `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
-                                bi.KodeProcessor, bi.KodeOrderProcessor, bi.ProcessorLastBlockHash,
+                                bi.KodeProcessor, bi.KodePengirimanKurir, bi.KurirLastBlockHash,
                                 bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
                                 bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
                                 o.KodeOrder, o.NamaProcessor, o.NamaProduk,
@@ -702,36 +720,14 @@ async function getUnifiedChainByCycle(sequelizePeternakan, kodeCycle) {
                          FROM blockchainidentity bi
                          LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
                          LEFT JOIN retailer r ON bi.IdRetailer = r.IdRetailer
-                         WHERE bi.KodeOrderProcessor = :kodeOrder
-                         ORDER BY bi.CreatedAt ASC
+                         WHERE o.NamaProcessor LIKE :processorLike
+                         ORDER BY bi.CreatedAt DESC
                          LIMIT 5`,
-                        { type: Sequelize.QueryTypes.SELECT, replacements: { kodeOrder } }
+                        {
+                            type: Sequelize.QueryTypes.SELECT,
+                            replacements: { processorLike: `%${processorName}%` }
+                        }
                     );
-                }
-
-                // Method 2: Fallback - find by NamaProcessor containing processor's peternakan name
-                if (retailerChains.length === 0) {
-                    const processorName = result.processorChain.identity.namaPeternakan;
-                    if (processorName) {
-                        retailerChains = await conn.query(
-                            `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
-                                    bi.KodeProcessor, bi.KodeOrderProcessor, bi.ProcessorLastBlockHash,
-                                    bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
-                                    bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
-                                    o.KodeOrder, o.NamaProcessor, o.NamaProduk,
-                                    r.NamaRetailer, r.AlamatRetailer
-                             FROM blockchainidentity bi
-                             LEFT JOIN orders o ON bi.IdOrder = o.IdOrder
-                             LEFT JOIN retailer r ON bi.IdRetailer = r.IdRetailer
-                             WHERE o.NamaProcessor LIKE :processorLike
-                             ORDER BY bi.CreatedAt DESC
-                             LIMIT 5`,
-                            {
-                                type: Sequelize.QueryTypes.SELECT,
-                                replacements: { processorLike: `%${processorName}%` }
-                            }
-                        );
-                    }
                 }
             }
 
@@ -741,7 +737,7 @@ async function getUnifiedChainByCycle(sequelizePeternakan, kodeCycle) {
                 if (tujuan) {
                     retailerChains = await conn.query(
                         `SELECT bi.IdIdentity, bi.KodeIdentity, bi.IdOrder, bi.IdRetailer,
-                                bi.KodeProcessor, bi.KodeOrderProcessor, bi.ProcessorLastBlockHash,
+                                bi.KodeProcessor, bi.KodePengirimanKurir, bi.KurirLastBlockHash,
                                 bi.GenesisHash, bi.LatestBlockHash, bi.TotalBlocks,
                                 bi.StatusChain, bi.CreatedAt, bi.CompletedAt,
                                 o.KodeOrder, o.NamaProcessor, o.NamaProduk,
@@ -774,8 +770,8 @@ async function getUnifiedChainByCycle(sequelizePeternakan, kodeCycle) {
                         namaProduk: retChain.NamaProduk,
                         namaRetailer: retChain.NamaRetailer,
                         alamatRetailer: retChain.AlamatRetailer,
-                        kodeOrderProcessor: retChain.KodeOrderProcessor,
-                        processorLastBlockHash: retChain.ProcessorLastBlockHash,
+                        kodePengirimanKurir: retChain.KodePengirimanKurir,
+                        kurirLastBlockHash: retChain.KurirLastBlockHash,
                         statusChain: retChain.StatusChain,
                         totalBlocks: retChain.TotalBlocks,
                         genesisHash: retChain.GenesisHash,

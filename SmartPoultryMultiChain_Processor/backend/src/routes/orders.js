@@ -4,6 +4,41 @@ const { Order, User, sequelize, BlockchainIdentity, LedgerProcessor } = require(
 const { generateKodeOrder, generateKodeIdentity, generateKodeBlock } = require('../utils/codeGenerator');
 const { createReceiveFromFarmBlock, generateHash, GENESIS_PREV_HASH } = require('../utils/blockchain');
 const { authMiddleware, adminOnly } = require('../middlewares/auth');
+const { getRetailerConnection } = require('../config/crossChainDatabase');
+const { Sequelize } = require('sequelize');
+
+// GET /api/orders/stock-summary — check available production stock
+router.get('/stock-summary', authMiddleware, async (req, res) => {
+    try {
+        // Find produksi items that are SELESAI or LULUS_QC and haven't been fully shipped
+        const stockData = await sequelize.query(`
+            SELECT 
+                p.JenisAyam,
+                SUM(p.JumlahOutput) AS TotalProduksi,
+                COALESCE(SUM(pg.JumlahKirim), 0) AS TotalDikirim,
+                SUM(p.JumlahOutput) - COALESCE(SUM(pg.JumlahKirim), 0) AS StokTersedia,
+                SUM(p.BeratTotal) AS TotalBerat,
+                COUNT(DISTINCT p.IdProduksi) AS JumlahBatch
+            FROM produksi p
+            LEFT JOIN pengiriman pg ON pg.IdProduksi = p.IdProduksi AND pg.StatusPengiriman != 'GAGAL'
+            WHERE p.StatusProduksi IN ('SELESAI', 'LULUS_QC')
+            GROUP BY p.JenisAyam
+        `, { type: Sequelize.QueryTypes.SELECT });
+
+        const totalAvailable = stockData.reduce((sum, s) => sum + (parseInt(s.StokTersedia) || 0), 0);
+
+        res.json({
+            data: {
+                stockByType: stockData,
+                totalAvailable,
+                hasStock: totalAvailable > 0
+            }
+        });
+    } catch (error) {
+        console.error('Stock summary error:', error);
+        res.status(500).json({ message: 'Gagal mengambil ringkasan stok.' });
+    }
+});
 
 // GET /api/orders
 router.get('/', authMiddleware, async (req, res) => {
@@ -16,6 +51,26 @@ router.get('/', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Get orders error:', error);
         res.status(500).json({ message: 'Gagal mengambil data order.' });
+    }
+});
+
+// GET /api/orders/retailer-orders - Fetch incoming orders from Retailer database
+router.get('/retailer-orders', authMiddleware, async (req, res) => {
+    try {
+        const retConn = getRetailerConnection();
+        const orders = await retConn.query(
+            `SELECT o.IdOrder, o.KodeOrder, o.NamaProduk, o.JenisProduk, o.JumlahPesanan, 
+                    o.Satuan, o.TanggalDibutuhkan, o.StatusOrder, o.Catatan,
+                    r.NamaRetailer, r.AlamatRetailer, r.KontakRetailer, r.KodeRetailer
+             FROM orders o
+             LEFT JOIN retailer r ON o.IdRetailer = r.IdRetailer
+             ORDER BY o.CreatedAt DESC`,
+            { type: Sequelize.QueryTypes.SELECT }
+        );
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Get retailer orders error:', error);
+        res.status(500).json({ message: 'Gagal mengambil data pesanan dari Retailer.' });
     }
 });
 

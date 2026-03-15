@@ -11,7 +11,7 @@ const LedgerRetailer = sequelize.define('LedgerRetailer', {
     IdPenjualan: { type: DataTypes.INTEGER, allowNull: true },
     TipeBlock: {
         type: DataTypes.ENUM(
-            'RECEIVE_FROM_PROCESSOR',
+            'RECEIVE_FROM_COURIER',
             'NOTA_PENERIMAAN',
             'STOCK_IN',
             'SALE_RECORDED',

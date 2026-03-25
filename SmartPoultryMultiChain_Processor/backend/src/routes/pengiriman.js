@@ -117,6 +117,38 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
         }
 
         await t.commit();
+
+        // ====================================================================
+        // CROSS-DB AUTO SYNC: Update Retailer order to DIKIRIM
+        // so Retailer can see the shipment is being prepared and sent.
+        // Best-effort, non-blocking.
+        // ====================================================================
+        try {
+            const retailerConn = getRetailerConnection();
+            if (retailerConn) {
+                // Find the matching Retailer order and update status
+                const recipientName = namaPenerima || namaRetailer || '';
+                const [retOrder] = await retailerConn.query(
+                    `SELECT o.IdOrder, o.KodeOrder FROM orders o
+                     LEFT JOIN retailer r ON o.IdRetailer = r.IdRetailer
+                     WHERE r.NamaRetailer = :namaRetailer
+                       AND o.StatusOrder IN ('PENDING', 'DIPROSES')
+                     ORDER BY o.CreatedAt ASC LIMIT 1`,
+                    { type: Sequelize.QueryTypes.SELECT, replacements: { namaRetailer: recipientName } }
+                );
+
+                if (retOrder) {
+                    await retailerConn.query(
+                        `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW() WHERE IdOrder = :idOrder`,
+                        { type: Sequelize.QueryTypes.UPDATE, replacements: { idOrder: retOrder.IdOrder } }
+                    );
+                    console.log(`[Processor Pengiriman] Auto-updated Retailer order ${retOrder.KodeOrder} to DIKIRIM`);
+                }
+            }
+        } catch (syncErr) {
+            console.warn('[Processor Pengiriman] Cross-DB Retailer update failed (non-blocking):', syncErr.message);
+        }
+
         res.status(201).json({ message: 'Pengiriman berhasil dicatat. Menunggu kurir menerima permintaan pengiriman.', data: pengiriman });
     } catch (error) {
         await t.rollback();

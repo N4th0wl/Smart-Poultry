@@ -5,7 +5,7 @@ const { Pengiriman, BuktiTandaTerima, NotaPengirimanKurir, Kurir, sequelize } = 
 const { generateKodePengiriman, generateKodeBukti, generateKodeNota } = require('../utils/codeGenerator');
 const blockchain = require('../utils/blockchainHelper');
 const { getPeternakanConnection } = require('../config/peternakanDatabase');
-const { getProcessorConnection } = require('../config/crossChainDatabase');
+const { getProcessorConnection, getRetailerConnection } = require('../config/crossChainDatabase');
 const { Sequelize } = require('sequelize');
 
 // ============================================
@@ -173,18 +173,59 @@ router.post('/import', authMiddleware, async (req, res) => {
 
         await transaction.commit();
 
-        // After successful import, update Processor's pengiriman status to DIKIRIM_KURIR
-        // This is a best-effort cross-DB update — does not block the response
+        // After successful import, cross-DB status updates (best-effort, non-blocking)
+        if (tipePengiriman === 'FARM_TO_PROCESSOR' && id) {
+            // Update Processor order status to DIKIRIM so they know goods are in transit
+            try {
+                const procConn = getProcessorConnection();
+                await procConn.query(
+                    `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW()
+                     WHERE StatusOrder IN ('PENDING', 'CONFIRMED')
+                     AND IdOrder IN (
+                         SELECT bi.IdOrder FROM blockchainidentity bi
+                         WHERE bi.KodeCycleFarm = :cycleFarm
+                     )`,
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { cycleFarm: upstreamCycleId || '' } }
+                );
+                console.log(`[Leg1 Import] Updated Processor order for cycle ${upstreamCycleId} to DIKIRIM`);
+            } catch (e) {
+                console.warn('[Leg1 Import] Failed to update Processor order (non-blocking):', e.message);
+            }
+        }
+
         if (tipePengiriman === 'PROCESSOR_TO_RETAILER' && id) {
+            // Update Processor's pengiriman status to DIKIRIM_KURIR
             try {
                 const procConn = getProcessorConnection();
                 await procConn.query(
                     `UPDATE pengiriman SET StatusPengiriman = 'DIKIRIM_KURIR' WHERE KodePengiriman = :kodePengiriman AND StatusPengiriman IN ('DISIAPKAN', 'DIKIRIM')`,
                     { type: Sequelize.QueryTypes.UPDATE, replacements: { kodePengiriman: id } }
                 );
-                console.log(`Updated Processor pengiriman ${id} status to DIKIRIM_KURIR`);
+                console.log(`[Leg2 Import] Updated Processor pengiriman ${id} to DIKIRIM_KURIR`);
             } catch (e) {
-                console.warn('Failed to update Processor pengiriman status (non-blocking):', e.message);
+                console.warn('[Leg2 Import] Failed to update Processor pengiriman status (non-blocking):', e.message);
+            }
+
+            // Also update Retailer's order status to DIKIRIM so they know it is in transit
+            try {
+                const retConn = getRetailerConnection();
+                const [retOrder] = await retConn.query(
+                    `SELECT o.IdOrder, o.KodeOrder FROM orders o
+                     LEFT JOIN retailer r ON o.IdRetailer = r.IdRetailer
+                     WHERE r.NamaRetailer = :namaRetailer AND o.StatusOrder IN ('PENDING', 'DIPROSES')
+                     ORDER BY o.CreatedAt ASC LIMIT 1`,
+                    { type: Sequelize.QueryTypes.SELECT, replacements: { namaRetailer: tujuanPenerima } }
+                );
+
+                if (retOrder) {
+                    await retConn.query(
+                        `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW() WHERE IdOrder = :idOrder`,
+                        { type: Sequelize.QueryTypes.UPDATE, replacements: { idOrder: retOrder.IdOrder } }
+                    );
+                    console.log(`[Leg2 Import] Updated Retailer order ${retOrder.KodeOrder} to DIKIRIM`);
+                }
+            } catch (e) {
+                console.warn('[Leg2 Import] Failed to update Retailer order status (non-blocking):', e.message);
             }
         }
 
@@ -421,21 +462,141 @@ router.post('/:id/nota', authMiddleware, async (req, res) => {
 
         await transaction.commit();
 
-        // After delivery, update Processor's pengiriman status to match (best-effort)
-        if (shipment.TipePengiriman === 'PROCESSOR_TO_RETAILER' && shipment.ReferensiEksternal) {
-            try {
-                const procConn = getProcessorConnection();
-                const newStatus = shipment.StatusPengiriman; // TERKIRIM or GAGAL
-                await procConn.query(
-                    `UPDATE pengiriman SET StatusPengiriman = :newStatus, TanggalSampai = :tanggalSampai WHERE KodePengiriman = :kodePengiriman`,
-                    {
-                        type: Sequelize.QueryTypes.UPDATE,
-                        replacements: { newStatus, tanggalSampai, kodePengiriman: shipment.ReferensiEksternal }
+        // ====================================================================
+        // CROSS-DB STATUS SYNC: Automatically update all upstream/downstream
+        // systems when a delivery is completed by the courier.
+        // These are best-effort, non-blocking updates.
+        // ====================================================================
+
+        if (shipment.TipePengiriman === 'FARM_TO_PROCESSOR') {
+            // --- LEG 1 COMPLETED: Farm → Processor ---
+            // 1. Update Farm's Pengiriman status so Farm sees delivery is complete
+            if (shipment.ReferensiEksternal) {
+                try {
+                    const farmConn = getPeternakanConnection();
+                    // NotaPengiriman in Farm stores TanggalPenerimaan. Update it.
+                    await farmConn.query(
+                        `UPDATE NotaPengiriman np
+                         JOIN Pengiriman pg ON np.KodePengiriman = pg.KodePengiriman
+                         SET np.TanggalPenerimaan = :tanggalSampai
+                         WHERE pg.KodePengiriman = :kodePengiriman`,
+                        {
+                            type: Sequelize.QueryTypes.UPDATE,
+                            replacements: { tanggalSampai, kodePengiriman: shipment.ReferensiEksternal }
+                        }
+                    );
+                    console.log(`[Leg1 Complete] Updated Farm NotaPengiriman for ${shipment.ReferensiEksternal}`);
+                } catch (e) {
+                    console.warn('[Leg1] Failed to update Farm pengiriman status (non-blocking):', e.message);
+                }
+
+                // 1b. Also update the Farm's processor-order status in Processor DB to DITERIMA
+                // so Farm's "Pesanan Processor" page shows the order is completed
+                try {
+                    const procConn = getProcessorConnection();
+                    // Find processor order that was DIKIRIM and update to DITERIMA
+                    if (shipment.UpstreamCycleId) {
+                        await procConn.query(
+                            `UPDATE orders o
+                             LEFT JOIN blockchainidentity bi ON o.IdOrder = bi.IdOrder
+                             SET o.StatusOrder = 'DITERIMA', o.TanggalDiterima = :tanggalSampai, o.UpdatedAt = NOW()
+                             WHERE (bi.KodeCycleFarm = :kodeCycleFarm OR o.StatusOrder = 'DIKIRIM')
+                               AND o.StatusOrder IN ('PENDING', 'CONFIRMED', 'DIKIRIM')
+                             ORDER BY o.CreatedAt ASC LIMIT 1`,
+                            {
+                                type: Sequelize.QueryTypes.UPDATE,
+                                replacements: { tanggalSampai, kodeCycleFarm: shipment.UpstreamCycleId }
+                            }
+                        );
+                        console.log(`[Leg1 Complete] Updated Processor order for cycle ${shipment.UpstreamCycleId} to DITERIMA`);
+                    } else {
+                        // Fallback: just update the first DIKIRIM order
+                        await procConn.query(
+                            `UPDATE orders SET StatusOrder = 'DITERIMA', TanggalDiterima = :tanggalSampai, UpdatedAt = NOW()
+                             WHERE StatusOrder = 'DIKIRIM'
+                             ORDER BY CreatedAt ASC LIMIT 1`,
+                            {
+                                type: Sequelize.QueryTypes.UPDATE,
+                                replacements: { tanggalSampai }
+                            }
+                        );
+                        console.log(`[Leg1 Complete] Updated first DIKIRIM Processor order to DITERIMA (fallback)`);
                     }
-                );
-                console.log(`Updated Processor pengiriman ${shipment.ReferensiEksternal} status to ${newStatus}`);
-            } catch (e) {
-                console.warn('Failed to update Processor pengiriman status after delivery (non-blocking):', e.message);
+                } catch (e) {
+                    console.warn('[Leg1] Failed to update Processor order status (non-blocking):', e.message);
+                }
+            }
+        }
+
+        if (shipment.TipePengiriman === 'PROCESSOR_TO_RETAILER') {
+            // --- LEG 2 COMPLETED: Processor → Retailer ---
+            // 1. Update Processor's pengiriman status
+            if (shipment.ReferensiEksternal) {
+                try {
+                    const procConn = getProcessorConnection();
+                    const newStatus = shipment.StatusPengiriman === 'GAGAL' ? 'GAGAL' : 'TERKIRIM';
+                    await procConn.query(
+                        `UPDATE pengiriman SET StatusPengiriman = :newStatus, TanggalSampai = :tanggalSampai WHERE KodePengiriman = :kodePengiriman`,
+                        {
+                            type: Sequelize.QueryTypes.UPDATE,
+                            replacements: { newStatus, tanggalSampai, kodePengiriman: shipment.ReferensiEksternal }
+                        }
+                    );
+                    console.log(`[Leg2 Complete] Updated Processor pengiriman ${shipment.ReferensiEksternal} to ${newStatus}`);
+
+                    // 1b. Also update the Processor's internal order to SELESAI
+                    // so the Processor panel shows the order is fully completed.
+                    try {
+                        const [procPeng] = await procConn.query(
+                            `SELECT pg.IdProduksi, pr.IdOrder
+                             FROM pengiriman pg
+                             LEFT JOIN produksi pr ON pg.IdProduksi = pr.IdProduksi
+                             WHERE pg.KodePengiriman = :kodePengiriman`,
+                            { type: Sequelize.QueryTypes.SELECT, replacements: { kodePengiriman: shipment.ReferensiEksternal } }
+                        );
+                        if (procPeng && procPeng.IdOrder) {
+                            await procConn.query(
+                                `UPDATE orders SET StatusOrder = 'SELESAI', UpdatedAt = NOW() WHERE IdOrder = :idOrder AND StatusOrder NOT IN ('SELESAI')`,
+                                { type: Sequelize.QueryTypes.UPDATE, replacements: { idOrder: procPeng.IdOrder } }
+                            );
+                            console.log(`[Leg2 Complete] Updated Processor order ${procPeng.IdOrder} to SELESAI`);
+                        }
+                    } catch (innerErr) {
+                        console.warn('[Leg2] Failed to update Processor internal order status:', innerErr.message);
+                    }
+                } catch (e) {
+                    console.warn('[Leg2] Failed to update Processor pengiriman status (non-blocking):', e.message);
+                }
+            }
+
+            // 2. Auto-update Retailer's order status to DITERIMA (fully completed)
+            //    so Retailer can immediately manage the received goods.
+            if (shipment.ReferensiEksternal) {
+                try {
+                    const retConn = getRetailerConnection();
+                    // Find the Retailer's order linked to this delivery
+                    const [retOrder] = await retConn.query(
+                        `SELECT o.IdOrder, o.KodeOrder, o.StatusOrder
+                         FROM orders o
+                         LEFT JOIN retailer r ON o.IdRetailer = r.IdRetailer
+                         WHERE r.NamaRetailer = :namaRetailer
+                           AND o.StatusOrder IN ('PENDING', 'DIPROSES', 'DIKIRIM')
+                         ORDER BY o.CreatedAt ASC LIMIT 1`,
+                        { type: Sequelize.QueryTypes.SELECT, replacements: { namaRetailer: shipment.TujuanPenerima } }
+                    );
+
+                    if (retOrder) {
+                        const retStatus = shipment.StatusPengiriman === 'GAGAL' ? 'GAGAL' : 'DITERIMA';
+                        await retConn.query(
+                            `UPDATE orders SET StatusOrder = :retStatus, TanggalDiterima = :tanggalSampai, UpdatedAt = NOW()
+                             WHERE IdOrder = :idOrder`,
+                            { type: Sequelize.QueryTypes.UPDATE, replacements: { retStatus, tanggalSampai, idOrder: retOrder.IdOrder } }
+                        );
+                        console.log(`[Leg2 Complete] Updated Retailer order ${retOrder.KodeOrder} to ${retStatus}`);
+                    }
+                } catch (e) {
+                    console.warn('[Leg2] Failed to update Retailer order status (non-blocking):', e.message);
+                }
             }
         }
 

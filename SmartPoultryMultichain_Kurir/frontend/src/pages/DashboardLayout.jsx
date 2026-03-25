@@ -8,7 +8,6 @@ const navItems = [
     { to: '/dashboard', label: 'Overview', keywords: ['overview', 'dashboard', 'beranda', 'ringkasan'] },
     { to: '/dashboard/kurir', label: 'Kurir', keywords: ['kurir', 'courier', 'pengantar'] },
     { to: '/dashboard/pengiriman', label: 'Pengiriman', keywords: ['pengiriman', 'shipment', 'delivery', 'kirim'] },
-    { to: '/dashboard/blockchain', label: 'Blockchain', keywords: ['blockchain', 'chain', 'block', 'ledger', 'tracing'] },
 ]
 
 function DashboardLayout() {

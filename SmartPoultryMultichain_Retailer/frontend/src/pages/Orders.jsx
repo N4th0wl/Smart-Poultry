@@ -90,14 +90,32 @@ export default function Orders() {
                                     <td>{o.NamaProduk}</td>
                                     <td>{o.JumlahPesanan} {o.Satuan}</td>
                                     <td>Rp {Number(o.TotalHarga).toLocaleString('id-ID')}</td>
-                                    <td><span className={`sp-badge ${o.StatusOrder === 'SELESAI' ? 'success' : o.StatusOrder === 'DITERIMA' ? 'info' : o.StatusOrder === 'DITOLAK' ? 'danger' : 'muted'}`}>{o.StatusOrder}</span></td>
+                                    <td><span className={`sp-badge ${
+                                        o.StatusOrder === 'SELESAI' ? 'success' :
+                                        o.StatusOrder === 'DITERIMA' ? 'success' :
+                                        o.StatusOrder === 'DIKIRIM' ? 'info' :
+                                        o.StatusOrder === 'DIPROSES' ? 'info' :
+                                        o.StatusOrder === 'DITOLAK' || o.StatusOrder === 'GAGAL' ? 'danger' : 'muted'
+                                    }`}>{
+                                        o.StatusOrder === 'PENDING' ? '⏳ Menunggu' :
+                                        o.StatusOrder === 'DIPROSES' ? '🔄 Diproses' :
+                                        o.StatusOrder === 'DIKIRIM' ? '🚚 Dikirim' :
+                                        o.StatusOrder === 'DITERIMA' ? '📦 Diterima' :
+                                        o.StatusOrder === 'SELESAI' ? '✅ Selesai' :
+                                        o.StatusOrder === 'GAGAL' ? '❌ Gagal' :
+                                        o.StatusOrder === 'DITOLAK' ? '❌ Ditolak' :
+                                        o.StatusOrder
+                                    }</span></td>
                                     <td>{o.TanggalOrder}</td>
                                     <td>
-                                        {(o.StatusOrder === 'PENDING' || o.StatusOrder === 'CONFIRMED' || o.StatusOrder === 'DIKIRIM') && (
+                                        {(o.StatusOrder === 'DIKIRIM') && (
                                             <button className="sp-btn secondary" style={{ padding: '6px 14px', fontSize: '0.78rem' }}
                                                 onClick={() => { setSelectedOrder(o); setTerimaForm({ penerimaOrder: '', jumlahDiterima: String(o.JumlahPesanan), kondisiTerima: '', kodeOrderProcessor: '', processorLastBlockHash: '' }); setShowTerimaModal(true) }}>
                                                 Terima
                                             </button>
+                                        )}
+                                        {(o.StatusOrder === 'PENDING' || o.StatusOrder === 'DIPROSES') && (
+                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Menunggu proses...</span>
                                         )}
                                     </td>
                                 </tr>

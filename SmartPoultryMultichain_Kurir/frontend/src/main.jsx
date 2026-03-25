@@ -12,7 +12,6 @@ import DashboardLayout from './pages/DashboardLayout.jsx'
 import DashboardHome from './pages/DashboardHome.jsx'
 import DashboardKurir from './pages/DashboardKurir.jsx'
 import DashboardPengiriman from './pages/DashboardPengiriman.jsx'
-import DashboardBlockchain from './pages/DashboardBlockchain.jsx'
 import DashboardSettings from './pages/DashboardSettings.jsx'
 import AdminLayout from './pages/AdminLayout.jsx'
 import AdminPanelUser from './pages/AdminPanelUser.jsx'
@@ -82,7 +81,6 @@ createRoot(document.getElementById('root')).render(
                         <Route index element={<DashboardHome />} />
                         <Route path="kurir" element={<DashboardKurir />} />
                         <Route path="pengiriman" element={<DashboardPengiriman />} />
-                        <Route path="blockchain" element={<DashboardBlockchain />} />
                         <Route path="settings" element={<DashboardSettings />} />
                     </Route>
 

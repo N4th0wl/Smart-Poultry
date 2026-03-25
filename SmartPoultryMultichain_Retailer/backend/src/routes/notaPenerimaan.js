@@ -27,9 +27,17 @@ router.get('/', authMiddleware, async (req, res) => {
                         where: { KodeNotaPengirimanProcessor: delivery.KodePengiriman } 
                     });
 
-                    if (!existing && delivery.UpstreamCycleId) {
-                        const order = await Order.findByPk(delivery.UpstreamCycleId);
-                        if (order && order.IdRetailer === req.user.idRetailer) {
+                    if (!existing) {
+                        const { Op } = require('sequelize');
+                        const order = await Order.findOne({
+                            where: { 
+                                IdRetailer: req.user.idRetailer,
+                                StatusOrder: { [Op.in]: ['PENDING', 'DIPROSES', 'DIKIRIM'] }
+                            },
+                            order: [['CreatedAt', 'ASC']]
+                        });
+
+                        if (order) {
                             const t = await sequelize.transaction();
                             try {
                                 const kodeNota = await generateKodeNotaPenerimaan(sequelize, t);

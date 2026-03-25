@@ -4,6 +4,8 @@ const { Panen, Pengiriman, NotaPengiriman, Kandang, Staf, sequelize } = require(
 const { authMiddleware } = require('../middleware/auth');
 const { generateKodePanen, generateKodePengiriman, generateKodeNotaPengiriman } = require('../utils/codeGenerator');
 const blockchain = require('../utils/blockchainHelper');
+const { getProcessorConnection } = require('../config/crossChainDatabase');
+const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
 // Single Processor Configuration
@@ -180,6 +182,33 @@ router.post('/pengiriman', async (req, res) => {
         }
 
         await transaction.commit();
+
+        // ====================================================================
+        // CROSS-DB AUTO SYNC: Notify Processor that shipment is on the way
+        // This ensures Processor order status shows 'DIKIRIM' immediately.
+        // Best-effort, non-blocking.
+        // ====================================================================
+        try {
+            const procConn = getProcessorConnection();
+            // Find Processor orders that match this peternakan and are CONFIRMED or PENDING
+            // Use NamaPeternakan from the Processor orders table to match
+            const { Peternakan } = require('../models');
+            const peternakan = await Peternakan.findByPk(kodePeternakan);
+            const namaPeternakan = peternakan ? peternakan.NamaPeternakan : null;
+
+            if (namaPeternakan) {
+                await procConn.query(
+                    `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW()
+                     WHERE NamaPeternakan = :namaPeternakan
+                       AND StatusOrder IN ('PENDING', 'CONFIRMED')
+                     ORDER BY CreatedAt ASC LIMIT 1`,
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { namaPeternakan } }
+                );
+                console.log(`[Farm Pengiriman] Auto-updated Processor order for ${namaPeternakan} to DIKIRIM`);
+            }
+        } catch (e) {
+            console.warn('[Farm Pengiriman] Cross-DB Processor update failed (non-blocking):', e.message);
+        }
 
         res.status(201).json({
             ...pengiriman.toJSON(),

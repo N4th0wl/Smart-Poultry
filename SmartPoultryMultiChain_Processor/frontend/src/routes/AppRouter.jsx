@@ -13,7 +13,7 @@ import LaporanProduksi from '../pages/LaporanProduksi'
 import PengirimanPage from '../pages/PengirimanPage'
 import NotaPage from '../pages/NotaPage'
 import KaryawanPage from '../pages/KaryawanPage'
-import BlockchainPage from '../pages/BlockchainPage'
+
 import AccountSettings from '../pages/AccountSettings'
 import NotaPenerimaanPage from '../pages/NotaPenerimaanPage'
 import AdminPanelProcessor from '../pages/AdminPanelProcessor'
@@ -61,7 +61,7 @@ export default function AppRouter() {
           <Route path="pengiriman" element={<AdminRoute><PengirimanPage /></AdminRoute>} />
           <Route path="nota" element={<AdminRoute><NotaPage /></AdminRoute>} />
           <Route path="karyawan" element={<AdminRoute><KaryawanPage /></AdminRoute>} />
-          <Route path="blockchain" element={<AdminRoute><BlockchainPage /></AdminRoute>} />
+
           <Route path="admin/processors" element={<AdminRoute><AdminPanelProcessor /></AdminRoute>} />
           <Route path="admin/blockchain" element={<AdminRoute><AdminPanelBlockchain /></AdminRoute>} />
           <Route path="account-settings" element={<AccountSettings />} />

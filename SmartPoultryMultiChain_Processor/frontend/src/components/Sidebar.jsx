@@ -172,10 +172,6 @@ export default function Sidebar({ isOpen, onRequestClose, onNavigate, onAccountS
         {isAdmin && (
           <NavItem to="/app/karyawan" icon={IconUsers} label="Karyawan" onNavigate={onNavigate} />
         )}
-        {isAdmin && (
-          <NavItem to="/app/blockchain" icon={IconChain} label="Blockchain" onNavigate={onNavigate} />
-        )}
-
         {/* Admin Section Divider */}
         {isAdmin && (
           <>

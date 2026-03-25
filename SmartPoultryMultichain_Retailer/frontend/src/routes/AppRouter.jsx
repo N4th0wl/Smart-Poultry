@@ -8,7 +8,7 @@ import Orders from '../pages/Orders'
 import NotaPenerimaanPage from '../pages/NotaPenerimaanPage'
 import GudangPage from '../pages/GudangPage'
 import PenjualanPage from '../pages/PenjualanPage'
-import BlockchainPage from '../pages/BlockchainPage'
+
 import AccountSettings from '../pages/AccountSettings'
 
 function ProtectedRoute({ children }) {
@@ -33,7 +33,7 @@ export default function AppRouter() {
                     <Route path="nota-penerimaan" element={<NotaPenerimaanPage />} />
                     <Route path="gudang" element={<GudangPage />} />
                     <Route path="penjualan" element={<PenjualanPage />} />
-                    <Route path="blockchain" element={<BlockchainPage />} />
+
                     <Route path="account-settings" element={<AccountSettings />} />
                     <Route index element={<Navigate to="dashboard" replace />} />
                 </Route>

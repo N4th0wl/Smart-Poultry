@@ -74,6 +74,42 @@ router.get('/retailer-orders', authMiddleware, async (req, res) => {
     }
 });
 
+// PUT /api/orders/retailer-orders/:id/confirm - Confirm a Retailer order (updates Retailer DB)
+router.put('/retailer-orders/:id/confirm', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const retConn = getRetailerConnection();
+        const { id } = req.params;
+
+        await retConn.query(
+            `UPDATE orders SET StatusOrder = 'DIPROSES', UpdatedAt = NOW() WHERE IdOrder = :id AND StatusOrder = 'PENDING'`,
+            { type: Sequelize.QueryTypes.UPDATE, replacements: { id } }
+        );
+
+        res.json({ message: 'Pesanan Retailer dikonfirmasi. Status diubah ke DIPROSES.' });
+    } catch (error) {
+        console.error('Confirm retailer order error:', error);
+        res.status(500).json({ message: 'Gagal mengkonfirmasi pesanan retailer.' });
+    }
+});
+
+// PUT /api/orders/retailer-orders/:id/dikirim - Mark Retailer order as shipped (updates Retailer DB)
+router.put('/retailer-orders/:id/dikirim', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const retConn = getRetailerConnection();
+        const { id } = req.params;
+
+        await retConn.query(
+            `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW() WHERE IdOrder = :id AND StatusOrder IN ('PENDING', 'DIPROSES')`,
+            { type: Sequelize.QueryTypes.UPDATE, replacements: { id } }
+        );
+
+        res.json({ message: 'Pesanan Retailer ditandai sebagai DIKIRIM.' });
+    } catch (error) {
+        console.error('Mark retailer order as dikirim error:', error);
+        res.status(500).json({ message: 'Gagal mengupdate status pesanan retailer.' });
+    }
+});
+
 // GET /api/orders/:id
 router.get('/:id', authMiddleware, async (req, res) => {
     try {

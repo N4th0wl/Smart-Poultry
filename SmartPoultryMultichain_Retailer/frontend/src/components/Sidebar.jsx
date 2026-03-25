@@ -107,7 +107,6 @@ export default function Sidebar({ isOpen, onRequestClose, onNavigate, onAccountS
                 <NavItem to="/app/nota-penerimaan" icon={IconReceipt} label="Nota Penerimaan" onNavigate={onNavigate} />
                 <NavItem to="/app/gudang" icon={IconWarehouse} label="Gudang / Stok" onNavigate={onNavigate} />
                 <NavItem to="/app/penjualan" icon={IconSale} label="Penjualan" onNavigate={onNavigate} />
-                <NavItem to="/app/blockchain" icon={IconChain} label="Blockchain" onNavigate={onNavigate} />
             </nav>
 
             <div className="sp-sidebarFooter">

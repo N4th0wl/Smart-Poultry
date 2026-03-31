@@ -13,8 +13,7 @@ const navItems = [
   { to: '/dashboard/perlengkapan', label: 'Perlengkapan', keywords: ['perlengkapan', 'supplies', 'equipment'] },
   { to: '/dashboard/doc', label: 'DOC', keywords: ['doc', 'day old chick', 'bibit', 'ayam'] },
   { to: '/dashboard/kandang', label: 'Kandang', keywords: ['kandang', 'coop', 'cycle', 'monitoring'] },
-  { to: '/dashboard/panen', label: 'Panen & Pengiriman', keywords: ['panen', 'harvest', 'pengiriman', 'delivery'] },
-  { to: '/dashboard/pesanan-processor', label: 'Pesanan Processor', keywords: ['pesanan', 'processor', 'order', 'pabrik'] },
+  { to: '/dashboard/panen', label: 'Logistik & Pesanan', keywords: ['panen', 'harvest', 'pengiriman', 'delivery', 'pesanan', 'processor', 'order'] },
   { to: '/dashboard/staff', label: 'Tim & Staff', keywords: ['staff', 'tim', 'team', 'karyawan'] },
 ]
 

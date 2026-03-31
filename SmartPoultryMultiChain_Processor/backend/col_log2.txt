@@ -1,0 +1,10 @@
+[
+  {
+    "Field": "StatusPengiriman",
+    "Type": "enum('DISIAPKAN','DIKIRIM','DIKIRIM_KURIR','DALAM_PERJALANAN','TERKIRIM','GAGAL')",
+    "Null": "NO",
+    "Key": "",
+    "Default": "DISIAPKAN",
+    "Extra": ""
+  }
+]

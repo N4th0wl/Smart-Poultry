@@ -152,10 +152,7 @@ export default function Sidebar({ isOpen, onRequestClose, onNavigate, onAccountS
       <nav className="sp-nav">
         <NavItem to="/app/dashboard" icon={IconDashboard} label="Dashboard" onNavigate={onNavigate} />
         {isAdmin && (
-          <NavItem to="/app/orders" icon={IconOrder} label="Order" onNavigate={onNavigate} />
-        )}
-        {isAdmin && (
-          <NavItem to="/app/pesanan-retailer" icon={IconOrder} label="Pesanan dari Retailer" onNavigate={onNavigate} />
+          <NavItem to="/app/orders" icon={IconOrder} label="Manajemen Pesanan" onNavigate={onNavigate} />
         )}
         {isAdmin && (
           <NavItem to="/app/nota-penerimaan" icon={IconReceipt} label="Nota Penerimaan" onNavigate={onNavigate} />
@@ -165,9 +162,6 @@ export default function Sidebar({ isOpen, onRequestClose, onNavigate, onAccountS
         <NavItem to="/app/laporan" icon={IconChart} label="Laporan Produksi" onNavigate={onNavigate} />
         {isAdmin && (
           <NavItem to="/app/pengiriman" icon={IconTruck} label="Pengiriman" onNavigate={onNavigate} />
-        )}
-        {isAdmin && (
-          <NavItem to="/app/nota" icon={IconReceipt} label="Nota Pengiriman" onNavigate={onNavigate} />
         )}
         {isAdmin && (
           <NavItem to="/app/karyawan" icon={IconUsers} label="Karyawan" onNavigate={onNavigate} />

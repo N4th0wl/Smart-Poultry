@@ -4,7 +4,7 @@ const { Pengiriman, NotaPengiriman, Produksi, Order, BlockchainIdentity, sequeli
 const { generateKodePengiriman, generateKodeBlock } = require('../utils/codeGenerator');
 const { createTransferToRetailBlock } = require('../utils/blockchain');
 const { authMiddleware, adminOnly } = require('../middlewares/auth');
-const { getRetailerConnection } = require('../config/crossChainDatabase');
+const { getRetailerConnection, getKurirConnection } = require('../config/crossChainDatabase');
 const { Sequelize } = require('sequelize');
 
 // GET /api/pengiriman
@@ -41,6 +41,54 @@ router.get('/retailers', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/pengiriman/kurir-tracking — get Kurir Leg 2 tracking info (cross-chain)
+router.get('/kurir-tracking', authMiddleware, async (req, res) => {
+    try {
+        const kurirConn = getKurirConnection();
+        if (!kurirConn) {
+            return res.json({ data: [] });
+        }
+
+        // Find all Kurir shipments that reference Processor's KodePengiriman
+        const trackingData = await kurirConn.query(
+            `SELECT p.KodePengiriman AS KodePengirimanKurir,
+                    p.ReferensiEksternal AS KodePengirimanProcessor,
+                    p.StatusPengiriman AS StatusKurir,
+                    p.TanggalPickup,
+                    p.AsalPengirim,
+                    p.TujuanPenerima AS TujuanKurir,
+                    p.AlamatTujuan,
+                    p.KeteranganPengiriman,
+                    k.NamaKurir,
+                    k.NoTelp AS KontakKurir,
+                    btt.KodeBukti,
+                    btt.TanggalTerima AS TanggalPickupBukti,
+                    btt.NamaPengirim AS NamaPengirimBukti,
+                    btt.NamaPenerima AS NamaPenerimaBukti,
+                    btt.JumlahBarang,
+                    btt.BeratTotal,
+                    npk.KodeNota AS KodeNotaKurir,
+                    npk.TanggalSampai,
+                    npk.NamaPenerima AS PenerimaAkhir,
+                    npk.KondisiBarang,
+                    npk.Keterangan AS KeteranganNota
+             FROM Pengiriman p
+             LEFT JOIN Kurir k ON p.KodeKurir = k.KodeKurir
+             LEFT JOIN BuktiTandaTerima btt ON btt.KodePengiriman = p.KodePengiriman
+             LEFT JOIN NotaPengirimanKurir npk ON npk.KodePengiriman = p.KodePengiriman
+             WHERE p.TipePengiriman = 'PROCESSOR_TO_RETAILER'
+               AND p.ReferensiEksternal IS NOT NULL
+             ORDER BY p.createdAt DESC`,
+            { type: Sequelize.QueryTypes.SELECT }
+        );
+
+        res.json({ data: trackingData });
+    } catch (error) {
+        console.error('Get kurir tracking error:', error);
+        res.json({ data: [] });
+    }
+});
+
 // POST /api/pengiriman — create shipment (creates TRANSFER_TO_RETAIL block)
 // The blockchain data goes to Kurir Leg 2 first, then to Retailer
 router.post('/', authMiddleware, adminOnly, async (req, res) => {
@@ -69,6 +117,7 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
             BeratKirim: beratKirim || 0,
             MetodePengiriman: metodePengiriman || 'DIANTAR',
             NamaEkspedisi: namaEkspedisi || null,
+            StatusPengiriman: 'DIKIRIM',
             Catatan: catatan || null,
         }, { transaction: t });
 

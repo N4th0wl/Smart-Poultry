@@ -55,7 +55,8 @@ router.get('/incoming', authMiddleware, async (req, res) => {
                 `SELECT pg.KodePengiriman, pg.TanggalPengiriman, pg.NamaPerusahaanPengiriman, pg.AlamatTujuan, k.KodeCycle, p.NamaPeternakan
                  FROM Pengiriman pg
                  JOIN Kandang k ON pg.KodeKandang = k.KodeKandang
-                 JOIN Peternakan p ON k.KodePeternakan = p.KodePeternakan`,
+                 JOIN Peternakan p ON k.KodePeternakan = p.KodePeternakan
+                 WHERE pg.StatusPengiriman = 'MENUNGGU_KURIR' COLLATE utf8mb4_unicode_ci`,
                 { type: Sequelize.QueryTypes.SELECT }
             );
 
@@ -81,11 +82,12 @@ router.get('/incoming', authMiddleware, async (req, res) => {
                 `SELECT pg.KodePengiriman, pg.TujuanPengiriman, pg.NamaPenerima, pg.TanggalKirim,
                         pg.JumlahKirim, pg.BeratKirim, pg.StatusPengiriman,
                         pr.IdOrder, pr.KodeProduksi, pr.JenisAyam,
-                        o.KodeOrder, o.NamaProcessor, o.NamaPeternakan,
+                        o.KodeOrder, proc.NamaProcessor, o.NamaPeternakan,
                         bi.KodeCycleFarm, bi.LatestBlockHash AS ProcessorLastBlockHash
                  FROM pengiriman pg
                  LEFT JOIN produksi pr ON pg.IdProduksi = pr.IdProduksi
                  LEFT JOIN orders o ON pr.IdOrder = o.IdOrder
+                 LEFT JOIN processor proc ON o.IdProcessor = proc.IdProcessor
                  LEFT JOIN blockchainidentity bi ON bi.IdOrder = o.IdOrder AND bi.StatusChain IN ('ACTIVE', 'COMPLETED')
                  WHERE pg.StatusPengiriman IN ('DISIAPKAN', 'DIKIRIM')`,
                 { type: Sequelize.QueryTypes.SELECT }
@@ -175,6 +177,18 @@ router.post('/import', authMiddleware, async (req, res) => {
 
         // After successful import, cross-DB status updates (best-effort, non-blocking)
         if (tipePengiriman === 'FARM_TO_PROCESSOR' && id) {
+            // Update Farm pengiriman status to PICKUP
+            try {
+                const farmConn = getPeternakanConnection();
+                await farmConn.query(
+                    `UPDATE Pengiriman SET StatusPengiriman = 'PICKUP' WHERE KodePengiriman = :kodePengiriman`,
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { kodePengiriman: id } }
+                );
+                console.log(`[Leg1 Import] Updated Farm pengiriman ${id} to PICKUP`);
+            } catch (e) {
+                console.warn('[Leg1 Import] Failed to update Farm pengiriman status (non-blocking):', e.message);
+            }
+
             // Update Processor order status to DIKIRIM so they know goods are in transit
             try {
                 const procConn = getProcessorConnection();
@@ -387,6 +401,35 @@ router.post('/:id/bukti', authMiddleware, async (req, res) => {
         });
 
         await transaction.commit();
+
+        // Update Farm DB if Farm-to-Processor
+        if (shipment.TipePengiriman === 'FARM_TO_PROCESSOR' && shipment.ReferensiEksternal) {
+            try {
+                const farmConn = getPeternakanConnection();
+                await farmConn.query(
+                    `UPDATE Pengiriman SET StatusPengiriman = 'DALAM_PERJALANAN' WHERE KodePengiriman = :kodePengiriman`,
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { kodePengiriman: shipment.ReferensiEksternal } }
+                );
+                console.log(`[Leg1 Bukti] Updated Farm pengiriman ${shipment.ReferensiEksternal} to DALAM_PERJALANAN`);
+            } catch (e) {
+                console.warn('[Leg1 Bukti] Failed to update Farm pengiriman status:', e.message);
+            }
+        }
+
+        // Update Processor DB if Processor-to-Retailer
+        if (shipment.TipePengiriman === 'PROCESSOR_TO_RETAILER' && shipment.ReferensiEksternal) {
+            try {
+                const procConn = getProcessorConnection();
+                await procConn.query(
+                    `UPDATE pengiriman SET StatusPengiriman = 'DALAM_PERJALANAN' WHERE KodePengiriman = :kodePengiriman`,
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { kodePengiriman: shipment.ReferensiEksternal } }
+                );
+                console.log(`[Leg2 Bukti] Updated Processor pengiriman ${shipment.ReferensiEksternal} to DALAM_PERJALANAN`);
+            } catch (e) {
+                console.warn('[Leg2 Bukti] Failed to update Processor pengiriman status:', e.message);
+            }
+        }
+
         res.status(201).json(bukti);
     } catch (error) {
         await transaction.rollback();
@@ -485,7 +528,16 @@ router.post('/:id/nota', authMiddleware, async (req, res) => {
                             replacements: { tanggalSampai, kodePengiriman: shipment.ReferensiEksternal }
                         }
                     );
-                    console.log(`[Leg1 Complete] Updated Farm NotaPengiriman for ${shipment.ReferensiEksternal}`);
+                    
+                    // Update StatusPengiriman in Farm
+                    await farmConn.query(
+                        `UPDATE Pengiriman SET StatusPengiriman = :statusPengiriman WHERE KodePengiriman = :kodePengiriman`,
+                        {
+                            type: Sequelize.QueryTypes.UPDATE,
+                            replacements: { statusPengiriman: finalKondisi === 'RUSAK_TOTAL' ? 'GAGAL' : 'TERKIRIM', kodePengiriman: shipment.ReferensiEksternal }
+                        }
+                    );
+                    console.log(`[Leg1 Complete] Updated Farm tracking status and NotaPengiriman for ${shipment.ReferensiEksternal}`);
                 } catch (e) {
                     console.warn('[Leg1] Failed to update Farm pengiriman status (non-blocking):', e.message);
                 }

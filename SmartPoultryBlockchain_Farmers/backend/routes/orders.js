@@ -17,17 +17,23 @@ router.use(authMiddleware);
 router.get('/processor-orders', async (req, res) => {
     try {
         const procConn = getProcessorConnection();
-        const orders = await procConn.query(
-            `SELECT o.IdOrder, o.KodeOrder, o.NamaPeternakan, o.AlamatPeternakan,
+        const kodePeternakan = req.user.kodePeternakan;
+        console.log('--- GET /processor-orders ---');
+        console.log('kodePeternakan from token:', kodePeternakan);
+
+        const query = `SELECT o.IdOrder, o.KodeOrder, o.KodePeternakan, o.NamaPeternakan, o.AlamatPeternakan,
                     o.KontakPeternakan, o.JenisAyam, o.JumlahPesanan, o.Satuan,
                     o.TanggalOrder, o.TanggalDibutuhkan, o.HargaSatuan, o.TotalHarga,
                     o.StatusOrder, o.Catatan, o.CreatedAt,
                     p.NamaProcessor
              FROM orders o
              LEFT JOIN processor p ON o.IdProcessor = p.IdProcessor
-             ORDER BY o.CreatedAt DESC`,
-            { type: Sequelize.QueryTypes.SELECT }
-        );
+             WHERE o.KodePeternakan = :kodePeternakan
+             ORDER BY o.CreatedAt DESC`;
+        
+        console.log('Executing query with param:', { kodePeternakan: String(kodePeternakan) });
+        const orders = await procConn.query(query, { type: Sequelize.QueryTypes.SELECT, replacements: { kodePeternakan: String(kodePeternakan) } });
+        console.log('Orders found:', orders.length);
         res.json({ success: true, data: orders });
     } catch (error) {
         console.error('Get processor orders error:', error);

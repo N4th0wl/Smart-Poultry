@@ -44,7 +44,7 @@ export default function LaporanProduksi() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            const res = await apiClient.post('/qc', form)
+            const res = await apiClient.post('/qc', { ...form, origin: window.location.origin })
             showToast({ title: 'Berhasil', description: res.data.message || 'Laporan QC dicatat.', status: 'success' })
             setForm(defaultForm)
             setIsModalOpen(false)
@@ -78,7 +78,7 @@ export default function LaporanProduksi() {
                 showToast({ title: 'Info', description: 'Order terkait tidak ditemukan. Data mungkin sudah dihapus.', status: 'error' })
                 return
             }
-            const qrRes = await apiClient.get(`/qr-trace/generate/${kodeOrder}`)
+            const qrRes = await apiClient.get(`/qr-trace/generate/${kodeOrder}?origin=${encodeURIComponent(window.location.origin)}`)
             setQrModal({ open: true, data: qrRes.data })
         } catch (err) {
             showToast({ title: 'Gagal', description: err.response?.data?.message || 'Tidak dapat membuat QR Code.', status: 'error' })

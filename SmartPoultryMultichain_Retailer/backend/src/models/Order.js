@@ -16,7 +16,7 @@ const Order = sequelize.define('Order', {
     TanggalDibutuhkan: { type: DataTypes.DATEONLY, allowNull: false },
     HargaSatuan: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0 },
     TotalHarga: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
-    StatusOrder: { type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'DIKIRIM', 'DITERIMA', 'DITOLAK', 'SELESAI'), allowNull: false, defaultValue: 'PENDING' },
+    StatusOrder: { type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'DIPROSES', 'DIKIRIM', 'DITERIMA', 'DITOLAK', 'SELESAI'), allowNull: false, defaultValue: 'PENDING' },
     PenerimaOrder: { type: DataTypes.STRING(255), allowNull: true },
     TanggalDiterima: { type: DataTypes.DATEONLY, allowNull: true },
     JumlahDiterima: { type: DataTypes.INTEGER, allowNull: true },

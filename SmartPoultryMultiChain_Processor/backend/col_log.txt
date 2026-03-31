@@ -1,0 +1,1 @@
+IdIdentity, KodeIdentity, IdOrder, IdProcessor, KodePeternakan, KodeCycleFarm, FarmLastBlockHash, GenesisHash, LatestBlockHash, TotalBlocks, StatusChain, CreatedAt, CompletedAt

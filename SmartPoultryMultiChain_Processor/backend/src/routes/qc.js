@@ -30,7 +30,7 @@ router.post('/', authMiddleware, async (req, res) => {
         const {
             idProduksi, idKaryawan, tanggalQC,
             suhu, kelembaban, warnaAyam, bauAyam, teksturAyam,
-            hasilQC, catatan,
+            hasilQC, catatan, origin,
         } = req.body;
 
         if (!idProduksi || !tanggalQC || !hasilQC) {
@@ -92,7 +92,7 @@ router.post('/', authMiddleware, async (req, res) => {
                 try {
                     const order = await Order.findByPk(produksi.IdOrder, { transaction: t });
                     if (order) {
-                        const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5175';
+                        const clientOrigin = origin || process.env.CLIENT_ORIGIN || 'http://localhost:5175';
                         const traceUrl = `${clientOrigin}/trace/${order.KodeOrder}`;
                         const qrDataUrl = await QRCode.toDataURL(traceUrl, {
                             width: 400, margin: 2,

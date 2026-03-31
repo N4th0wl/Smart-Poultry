@@ -18,7 +18,6 @@ import DashboardPerlengkapan from './pages/DashboardPerlengkapan.jsx'
 import DashboardDoc from './pages/DashboardDoc.jsx'
 import DashboardKandang from './pages/DashboardKandang.jsx'
 import DashboardPanenPengiriman from './pages/DashboardPanenPengiriman.jsx'
-import DashboardPesananProcessor from './pages/DashboardPesananProcessor.jsx'
 import DashboardStaff from './pages/DashboardStaff.jsx'
 import DashboardSettings from './pages/DashboardSettings.jsx'
 import AdminLayout from './pages/AdminLayout.jsx'
@@ -96,7 +95,6 @@ createRoot(document.getElementById('root')).render(
             <Route path="doc" element={<DashboardDoc />} />
             <Route path="kandang" element={<DashboardKandang />} />
             <Route path="panen" element={<DashboardPanenPengiriman />} />
-            <Route path="pesanan-processor" element={<DashboardPesananProcessor />} />
             <Route path="staff" element={<DashboardStaff />} />
             <Route path="settings" element={<DashboardSettings />} />
           </Route>

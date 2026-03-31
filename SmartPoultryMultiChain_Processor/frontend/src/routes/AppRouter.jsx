@@ -6,12 +6,10 @@ import Login from '../pages/Login'
 import Register from '../pages/Register'
 import Dashboard from '../pages/Dashboard'
 import Orders from '../pages/Orders'
-import PesananRetailer from '../pages/PesananRetailer'
 import TugasProduksi from '../pages/TugasProduksi'
 import MonitoringProduksi from '../pages/MonitoringProduksi'
 import LaporanProduksi from '../pages/LaporanProduksi'
 import PengirimanPage from '../pages/PengirimanPage'
-import NotaPage from '../pages/NotaPage'
 import KaryawanPage from '../pages/KaryawanPage'
 
 import AccountSettings from '../pages/AccountSettings'
@@ -53,13 +51,11 @@ export default function AppRouter() {
         <Route path="/app" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="orders" element={<AdminRoute><Orders /></AdminRoute>} />
-          <Route path="pesanan-retailer" element={<AdminRoute><PesananRetailer /></AdminRoute>} />
           <Route path="nota-penerimaan" element={<AdminRoute><NotaPenerimaanPage /></AdminRoute>} />
           <Route path="tugas" element={<TugasProduksi />} />
           <Route path="produksi" element={<MonitoringProduksi />} />
           <Route path="laporan" element={<LaporanProduksi />} />
           <Route path="pengiriman" element={<AdminRoute><PengirimanPage /></AdminRoute>} />
-          <Route path="nota" element={<AdminRoute><NotaPage /></AdminRoute>} />
           <Route path="karyawan" element={<AdminRoute><KaryawanPage /></AdminRoute>} />
 
           <Route path="admin/processors" element={<AdminRoute><AdminPanelProcessor /></AdminRoute>} />

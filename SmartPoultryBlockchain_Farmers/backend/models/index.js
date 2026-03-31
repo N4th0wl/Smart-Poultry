@@ -210,7 +210,8 @@ const Pengiriman = sequelize.define('Pengiriman', {
     KodeStaf: { type: DataTypes.CHAR(13), allowNull: false },
     TanggalPengiriman: { type: DataTypes.DATEONLY, allowNull: false },
     NamaPerusahaanPengiriman: { type: DataTypes.STRING(50) },
-    AlamatTujuan: { type: DataTypes.STRING(255) }
+    AlamatTujuan: { type: DataTypes.STRING(255) },
+    StatusPengiriman: { type: DataTypes.STRING(30), defaultValue: 'MENUNGGU_KURIR' }
 });
 
 const NotaPengiriman = sequelize.define('NotaPengiriman', {

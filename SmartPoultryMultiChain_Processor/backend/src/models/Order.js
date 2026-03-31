@@ -5,6 +5,7 @@ const Order = sequelize.define('Order', {
     IdOrder: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     KodeOrder: { type: DataTypes.STRING(25), allowNull: false, unique: true },
     IdProcessor: { type: DataTypes.INTEGER, allowNull: true },
+    KodePeternakan: { type: DataTypes.STRING(50), allowNull: true },
     NamaPeternakan: { type: DataTypes.STRING(255), allowNull: false },
     AlamatPeternakan: { type: DataTypes.STRING(500), allowNull: true },
     KontakPeternakan: { type: DataTypes.STRING(20), allowNull: true },

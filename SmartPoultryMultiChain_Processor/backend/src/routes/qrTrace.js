@@ -211,7 +211,7 @@ router.get('/generate/:kodeOrder', async (req, res) => {
         }
 
         // Generate the traceability URL
-        const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5175';
+        const clientOrigin = req.query.origin || process.env.CLIENT_ORIGIN || 'http://localhost:5175';
         const traceUrl = `${clientOrigin}/trace/${kodeOrder}`;
 
         // Generate QR code as base64 PNG
@@ -251,7 +251,7 @@ router.get('/generate-image/:kodeOrder', async (req, res) => {
             return res.status(404).send('Order not found');
         }
 
-        const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5175';
+        const clientOrigin = req.query.origin || process.env.CLIENT_ORIGIN || 'http://localhost:5175';
         const traceUrl = `${clientOrigin}/trace/${kodeOrder}`;
 
         const qrBuffer = await QRCode.toBuffer(traceUrl, {

@@ -35,7 +35,7 @@ router.get('/pengiriman/all', async (req, res) => {
 
         const pengirimans = await sequelize.query(`
             SELECT pg.KodePengiriman, pg.KodePanen, pg.KodeKandang, pg.KodeStaf,
-                   pg.TanggalPengiriman, pg.NamaPerusahaanPengiriman, pg.AlamatTujuan,
+                   pg.TanggalPengiriman, pg.NamaPerusahaanPengiriman, pg.AlamatTujuan, pg.StatusPengiriman,
                    p.TanggalPanen, p.TotalBerat, p.TotalHarga,
                    s.NamaStaf,
                    k.KodeKandang AS KandangKode,
@@ -66,7 +66,7 @@ router.get('/pengiriman/:id', async (req, res) => {
 
         const [pengiriman] = await sequelize.query(`
             SELECT pg.KodePengiriman, pg.KodePanen, pg.KodeKandang, pg.KodeStaf,
-                   pg.TanggalPengiriman, pg.NamaPerusahaanPengiriman, pg.AlamatTujuan,
+                   pg.TanggalPengiriman, pg.NamaPerusahaanPengiriman, pg.AlamatTujuan, pg.StatusPengiriman,
                    p.TanggalPanen, p.TotalBerat, p.TotalHarga,
                    s.NamaStaf
             FROM Pengiriman pg
@@ -148,7 +148,8 @@ router.post('/pengiriman', async (req, res) => {
             KodeStaf: kodeStaf,
             TanggalPengiriman: tanggalPengiriman,
             NamaPerusahaanPengiriman: PROCESSOR_NAME,
-            AlamatTujuan: PROCESSOR_ADDRESS
+            AlamatTujuan: PROCESSOR_ADDRESS,
+            StatusPengiriman: 'MENUNGGU_KURIR'
         }, { transaction });
 
         // Calculate estimated reception date: TanggalPengiriman + 1 day
@@ -191,20 +192,15 @@ router.post('/pengiriman', async (req, res) => {
         try {
             const procConn = getProcessorConnection();
             // Find Processor orders that match this peternakan and are CONFIRMED or PENDING
-            // Use NamaPeternakan from the Processor orders table to match
-            const { Peternakan } = require('../models');
-            const peternakan = await Peternakan.findByPk(kodePeternakan);
-            const namaPeternakan = peternakan ? peternakan.NamaPeternakan : null;
-
-            if (namaPeternakan) {
+            if (kodePeternakan) {
                 await procConn.query(
                     `UPDATE orders SET StatusOrder = 'DIKIRIM', UpdatedAt = NOW()
-                     WHERE NamaPeternakan = :namaPeternakan
+                     WHERE KodePeternakan = :kodePeternakan
                        AND StatusOrder IN ('PENDING', 'CONFIRMED')
                      ORDER BY CreatedAt ASC LIMIT 1`,
-                    { type: Sequelize.QueryTypes.UPDATE, replacements: { namaPeternakan } }
+                    { type: Sequelize.QueryTypes.UPDATE, replacements: { kodePeternakan } }
                 );
-                console.log(`[Farm Pengiriman] Auto-updated Processor order for ${namaPeternakan} to DIKIRIM`);
+                console.log(`[Farm Pengiriman] Auto-updated Processor order for KodePeternakan ${kodePeternakan} to DIKIRIM`);
             }
         } catch (e) {
             console.warn('[Farm Pengiriman] Cross-DB Processor update failed (non-blocking):', e.message);

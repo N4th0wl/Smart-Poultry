@@ -4,8 +4,24 @@ const { Order, User, sequelize, BlockchainIdentity, LedgerProcessor } = require(
 const { generateKodeOrder, generateKodeIdentity, generateKodeBlock } = require('../utils/codeGenerator');
 const { createReceiveFromFarmBlock, generateHash, GENESIS_PREV_HASH } = require('../utils/blockchain');
 const { authMiddleware, adminOnly } = require('../middlewares/auth');
-const { getRetailerConnection } = require('../config/crossChainDatabase');
+const { getRetailerConnection, getPeternakanConnection } = require('../config/crossChainDatabase');
 const { Sequelize } = require('sequelize');
+
+// GET /api/orders/peternakan - Get list of Peternakan
+router.get('/peternakan', authMiddleware, async (req, res) => {
+    try {
+        const petConn = getPeternakanConnection();
+        const farms = await petConn.query(
+            `SELECT KodePeternakan, NamaPeternakan, LokasiPeternakan AS AlamatPeternakan
+             FROM peternakan`,
+            { type: Sequelize.QueryTypes.SELECT }
+        );
+        res.json({ data: farms });
+    } catch (error) {
+        console.error('Get peternakan list error:', error);
+        res.status(500).json({ message: 'Gagal mengambil data peternakan.' });
+    }
+});
 
 // GET /api/orders/stock-summary — check available production stock
 router.get('/stock-summary', authMiddleware, async (req, res) => {
@@ -129,7 +145,7 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const {
-            namaPeternakan, alamatPeternakan, kontakPeternakan,
+            kodePeternakan, namaPeternakan, alamatPeternakan, kontakPeternakan,
             jenisAyam, jumlahPesanan, satuan,
             tanggalOrder, tanggalDibutuhkan, hargaSatuan, catatan,
         } = req.body;
@@ -145,6 +161,7 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
         const order = await Order.create({
             KodeOrder: kodeOrder,
             IdProcessor: req.user.idProcessor,
+            KodePeternakan: kodePeternakan || null,
             NamaPeternakan: namaPeternakan,
             AlamatPeternakan: alamatPeternakan || null,
             KontakPeternakan: kontakPeternakan || null,
@@ -182,6 +199,7 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
         ];
 
         const dbFieldMap = {
+            kodePeternakan: 'KodePeternakan',
             namaPeternakan: 'NamaPeternakan',
             alamatPeternakan: 'AlamatPeternakan',
             kontakPeternakan: 'KontakPeternakan',
@@ -194,6 +212,8 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
             catatan: 'Catatan',
         };
 
+        if (req.body.kodePeternakan !== undefined) updateData.KodePeternakan = req.body.kodePeternakan;
+        
         fields.forEach((field) => {
             if (req.body[field] !== undefined) {
                 updateData[dbFieldMap[field]] = req.body[field];

@@ -28,8 +28,22 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
-app.use(morgan('dev'));
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (origin.startsWith('http://localhost:')) return callback(null, true);
+        if (origin.endsWith('.devtunnels.ms')) return callback(null, true);
+        const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (process.env.NODE_ENV === 'production') {
+            callback(new Error('Not allowed by CORS'));
+        } else {
+            callback(null, true);
+        }
+    },
+    credentials: true
+}));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

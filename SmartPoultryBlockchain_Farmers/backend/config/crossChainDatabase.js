@@ -19,20 +19,30 @@ let retailerSequelize = null;
 function getKurirConnection() {
     if (kurirSequelize) return kurirSequelize;
 
-    kurirSequelize = new Sequelize(
-        process.env.KURIR_DB_NAME || 'smartpoultry_kurir',
-        process.env.KURIR_DB_USER || 'root',
-        process.env.KURIR_DB_PASSWORD || '',
-        {
-            host: process.env.KURIR_DB_HOST || 'localhost',
-            port: process.env.KURIR_DB_PORT || 3306,
+    if (process.env.KURIR_MYSQL_URL) {
+        kurirSequelize = new Sequelize(process.env.KURIR_MYSQL_URL, {
             dialect: 'mysql',
             timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
-        }
-    );
+        });
+    } else {
+        kurirSequelize = new Sequelize(
+            process.env.KURIR_DB_NAME || 'smartpoultry_kurir',
+            process.env.KURIR_DB_USER || 'root',
+            process.env.KURIR_DB_PASSWORD || '',
+            {
+                host: process.env.KURIR_DB_HOST || 'localhost',
+                port: process.env.KURIR_DB_PORT || 3306,
+                dialect: 'mysql',
+                timezone: '+07:00',
+                logging: false,
+                pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
+                define: { timestamps: false, freezeTableName: true }
+            }
+        );
+    }
 
     return kurirSequelize;
 }
@@ -40,20 +50,30 @@ function getKurirConnection() {
 function getProcessorConnection() {
     if (processorSequelize) return processorSequelize;
 
-    processorSequelize = new Sequelize(
-        process.env.PROCESSOR_DB_NAME || 'smartpoultry_processor',
-        process.env.PROCESSOR_DB_USER || 'root',
-        process.env.PROCESSOR_DB_PASSWORD || '',
-        {
-            host: process.env.PROCESSOR_DB_HOST || 'localhost',
-            port: process.env.PROCESSOR_DB_PORT || 3306,
+    if (process.env.PROCESSOR_MYSQL_URL) {
+        processorSequelize = new Sequelize(process.env.PROCESSOR_MYSQL_URL, {
             dialect: 'mysql',
             timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
-        }
-    );
+        });
+    } else {
+        processorSequelize = new Sequelize(
+            process.env.PROCESSOR_DB_NAME || 'smartpoultry_processor',
+            process.env.PROCESSOR_DB_USER || 'root',
+            process.env.PROCESSOR_DB_PASSWORD || '',
+            {
+                host: process.env.PROCESSOR_DB_HOST || 'localhost',
+                port: process.env.PROCESSOR_DB_PORT || 3306,
+                dialect: 'mysql',
+                timezone: '+07:00',
+                logging: false,
+                pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
+                define: { timestamps: false, freezeTableName: true }
+            }
+        );
+    }
 
     return processorSequelize;
 }
@@ -61,20 +81,30 @@ function getProcessorConnection() {
 function getRetailerConnection() {
     if (retailerSequelize) return retailerSequelize;
 
-    retailerSequelize = new Sequelize(
-        process.env.RETAILER_DB_NAME || 'smartpoultry_retailer',
-        process.env.RETAILER_DB_USER || 'root',
-        process.env.RETAILER_DB_PASSWORD || '',
-        {
-            host: process.env.RETAILER_DB_HOST || 'localhost',
-            port: process.env.RETAILER_DB_PORT || 3306,
+    if (process.env.RETAILER_MYSQL_URL) {
+        retailerSequelize = new Sequelize(process.env.RETAILER_MYSQL_URL, {
             dialect: 'mysql',
             timezone: '+07:00',
             logging: false,
             pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
             define: { timestamps: false, freezeTableName: true }
-        }
-    );
+        });
+    } else {
+        retailerSequelize = new Sequelize(
+            process.env.RETAILER_DB_NAME || 'smartpoultry_retailer',
+            process.env.RETAILER_DB_USER || 'root',
+            process.env.RETAILER_DB_PASSWORD || '',
+            {
+                host: process.env.RETAILER_DB_HOST || 'localhost',
+                port: process.env.RETAILER_DB_PORT || 3306,
+                dialect: 'mysql',
+                timezone: '+07:00',
+                logging: false,
+                pool: { max: 3, min: 0, acquire: 15000, idle: 10000 },
+                define: { timestamps: false, freezeTableName: true }
+            }
+        );
+    }
 
     return retailerSequelize;
 }

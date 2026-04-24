@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_URL
 
 // ============================================================================
 // ICONS (inline SVG for zero dependencies)

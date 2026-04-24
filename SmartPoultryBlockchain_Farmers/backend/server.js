@@ -6,18 +6,43 @@ const { sequelize } = require('./models');
 const app = express();
 
 // Middleware
+// Memaksa browser mengizinkan Private Network Access dan menangani preflight CORS secara eksplisit
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Access-Control-Request-Private-Network');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Private-Network', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Check if the origin is explicitly allowed or matches local dev server pattern
-    if (origin.startsWith('http://localhost:')) {
+    // In development, allow all localhost origins
+    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
       return callback(null, true);
     }
     
-    // Fallback to process.env.CLIENT_ORIGIN if strictly needed later
-    callback(null, true); // Permissive for development
+    // Check against allowed origins from CLIENT_ORIGIN env (comma-separated)
+    const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // In production, be strict; in development, be permissive
+    if (process.env.NODE_ENV === 'production') {
+      callback(new Error('Not allowed by CORS'));
+    } else {
+      callback(null, true);
+    }
   },
   credentials: true
 }));
@@ -79,7 +104,7 @@ sequelize.authenticate()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📡 API available at http://localhost:${PORT}/api`);
+      console.log(`📡 API available at ${process.env.NODE_ENV === 'production' ? '(Railway)' : `http://localhost:${PORT}`}/api`);
     });
   })
   .catch((err) => {

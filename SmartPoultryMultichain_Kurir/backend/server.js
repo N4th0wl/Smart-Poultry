@@ -11,9 +11,9 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
         
-        // In development, allow all localhost origins
+        // In development, allow all localhost and devtunnels origins
         if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-            if (origin.startsWith('http://localhost:')) {
+            if (origin.startsWith('http://localhost:') || origin.includes('.devtunnels.ms')) {
                 return callback(null, true);
             }
         }

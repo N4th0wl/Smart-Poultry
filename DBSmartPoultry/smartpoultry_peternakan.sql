@@ -41,7 +41,7 @@ CREATE TABLE `blockchainidentity` (
   `StatusChain` enum('ACTIVE','COMPLETED','FAILED','TRANSFERRED') NOT NULL DEFAULT 'ACTIVE',
   `CreatedAt` datetime DEFAULT NULL,
   `CompletedAt` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `blockchainidentity`
@@ -59,7 +59,7 @@ INSERT INTO `blockchainidentity` (`IdIdentity`, `KodeIdentity`, `KodePeternakan`
 CREATE TABLE `codecounter` (
   `EntityName` varchar(50) NOT NULL,
   `LastCounter` int NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `codecounter`
@@ -99,7 +99,7 @@ CREATE TABLE `cycle` (
   `TanggalMulai` date NOT NULL,
   `DurasiCycle` int NOT NULL,
   `SisaHariPanen` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `cycle`
@@ -119,7 +119,7 @@ CREATE TABLE `detailfeed` (
   `KodePemakaianFeed` char(13) NOT NULL,
   `KodePerlengkapan` char(13) NOT NULL,
   `JumlahPakan` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -133,7 +133,7 @@ CREATE TABLE `detailnotapenerimaan` (
   `JenisBarang` enum('DOC','PERLENGKAPAN') NOT NULL,
   `NamaBarang` varchar(100) NOT NULL,
   `Jumlah` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `detailnotapenerimaan`
@@ -157,7 +157,7 @@ CREATE TABLE `detailorder` (
   `NamaBarang` varchar(255) DEFAULT NULL,
   `JumlahBarang` int NOT NULL,
   `HargaSatuan` decimal(12,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `detailorder`
@@ -185,7 +185,7 @@ CREATE TABLE `doc` (
   `JumlahDiterima` int NOT NULL,
   `JumlahMatiPraKandang` int DEFAULT '0',
   `KondisiAwal` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `doc`
@@ -210,7 +210,7 @@ CREATE TABLE `kandang` (
   `LantaiKandang` varchar(20) DEFAULT NULL,
   `Kepadatan` float DEFAULT NULL,
   `SuhuKandang` float DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `kandang`
@@ -240,7 +240,7 @@ CREATE TABLE `ledger_peternakan` (
   `StatusBlock` enum('VALIDATED','REJECTED') NOT NULL DEFAULT 'VALIDATED',
   `CreatedAt` datetime DEFAULT NULL,
   `ValidatedAt` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `ledger_peternakan`
@@ -263,7 +263,7 @@ CREATE TABLE `login` (
   `Email` varchar(255) NOT NULL,
   `Password` varchar(255) NOT NULL,
   `Role` enum('admin','user') NOT NULL DEFAULT 'user'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `login`
@@ -286,7 +286,7 @@ CREATE TABLE `masterobat` (
   `Dosis` varchar(100) NOT NULL,
   `TanggalKadaluarsa` date NOT NULL,
   `HargaObat` decimal(12,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `masterobat`
@@ -306,7 +306,7 @@ CREATE TABLE `notapenerimaan` (
   `KodeOrder` char(13) NOT NULL,
   `TanggalPenerimaan` date NOT NULL,
   `NamaPenerima` char(30) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `notapenerimaan`
@@ -325,7 +325,7 @@ CREATE TABLE `notapengiriman` (
   `KodeNotaPengiriman` char(13) NOT NULL,
   `KodePengiriman` char(13) NOT NULL,
   `TanggalPenerimaan` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -339,7 +339,7 @@ CREATE TABLE `orders` (
   `KodeSupplier` char(13) NOT NULL,
   `TanggalOrder` date NOT NULL,
   `StatusOrder` enum('PROSES','SUDAH DITERIMA') NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `orders`
@@ -360,7 +360,7 @@ CREATE TABLE `panen` (
   `TanggalPanen` date NOT NULL,
   `TotalBerat` float DEFAULT NULL,
   `TotalHarga` decimal(14,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -372,7 +372,7 @@ CREATE TABLE `pemakaianfeed` (
   `KodePemakaianFeed` char(13) NOT NULL,
   `KodeKandang` char(13) NOT NULL,
   `TanggalPemakaian` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -386,7 +386,7 @@ CREATE TABLE `pemakaianobat` (
   `KodeKandang` char(13) NOT NULL,
   `TanggalPenggunaan` date NOT NULL,
   `JumlahObat` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -400,7 +400,7 @@ CREATE TABLE `pemakaianperlengkapan` (
   `KodeKandang` char(13) NOT NULL,
   `TanggalPemakaian` date NOT NULL,
   `JumlahPemakaian` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -417,7 +417,7 @@ CREATE TABLE `pengiriman` (
   `NamaPerusahaanPengiriman` varchar(50) DEFAULT NULL,
   `AlamatTujuan` varchar(255) DEFAULT NULL,
   `StatusPengiriman` varchar(30) DEFAULT 'MENUNGGU_KURIR'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -430,7 +430,7 @@ CREATE TABLE `pengukuranayam` (
   `KodeKandang` char(13) NOT NULL,
   `TanggalPengukuran` date NOT NULL,
   `BeratAyam` float DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -446,7 +446,7 @@ CREATE TABLE `performance` (
   `ActualFeedIntake` float DEFAULT NULL,
   `ActualWaterIntake` float DEFAULT NULL,
   `KeteranganPerformance` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -460,7 +460,7 @@ CREATE TABLE `perlengkapan` (
   `NamaPerlengkapan` varchar(100) NOT NULL,
   `KategoriPerlengkapan` enum('PAKAN','PERALATAN','OBAT') NOT NULL,
   `Satuan` varchar(20) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `perlengkapan`
@@ -480,7 +480,7 @@ CREATE TABLE `peternakan` (
   `KodePeternakan` int NOT NULL,
   `NamaPeternakan` varchar(255) NOT NULL,
   `LokasiPeternakan` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `peternakan`
@@ -501,7 +501,7 @@ CREATE TABLE `staf` (
   `KodeTim` char(13) NOT NULL,
   `NamaStaf` varchar(255) DEFAULT NULL,
   `PosisiStaf` varchar(100) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `staf`
@@ -523,7 +523,7 @@ CREATE TABLE `statuskandang` (
   `Populasi` int DEFAULT NULL,
   `BeratRataRata` float DEFAULT NULL,
   `TanggalPemeriksaan` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `statuskandang`
@@ -546,7 +546,7 @@ CREATE TABLE `statuskematian` (
   `JumlahReject` int DEFAULT NULL,
   `BuktiKematian` blob,
   `Keterangan` varchar(200) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -559,7 +559,7 @@ CREATE TABLE `stokwarehouse` (
   `KodePerlengkapan` char(13) NOT NULL,
   `Jumlah` int NOT NULL,
   `TanggalMasukPerlengkapan` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `stokwarehouse`
@@ -580,7 +580,7 @@ CREATE TABLE `supplier` (
   `KodePeternakan` int NOT NULL,
   `NamaSupplier` varchar(100) NOT NULL,
   `KontakSupplier` varchar(15) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `supplier`
@@ -600,7 +600,7 @@ CREATE TABLE `timkerja` (
   `KodePeternakan` int NOT NULL,
   `NamaTim` varchar(255) DEFAULT NULL,
   `JumlahAnggota` int DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `timkerja`
@@ -623,7 +623,7 @@ CREATE TABLE `todo` (
   `IsCompleted` tinyint(1) DEFAULT '0',
   `Prioritas` enum('Low','Medium','High') DEFAULT 'Medium',
   `TenggatWaktu` date DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -641,7 +641,7 @@ CREATE TABLE `todos` (
   `TenggatWaktu` date DEFAULT NULL,
   `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `updatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -746,7 +746,7 @@ CREATE TABLE `warehouse` (
   `KodeWarehouse` char(13) NOT NULL,
   `KodePeternakan` int NOT NULL,
   `LokasiWarehouse` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `warehouse`

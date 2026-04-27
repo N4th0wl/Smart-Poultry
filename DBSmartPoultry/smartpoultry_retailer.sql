@@ -44,7 +44,7 @@ CREATE TABLE `blockchainidentity` (
   `StatusChain` enum('ACTIVE','COMPLETED','FAILED') NOT NULL DEFAULT 'ACTIVE',
   `CompletedAt` datetime DEFAULT NULL,
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -55,7 +55,7 @@ CREATE TABLE `blockchainidentity` (
 CREATE TABLE `codecounter` (
   `EntityName` varchar(50) NOT NULL,
   `LastCounter` int NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `codecounter`
@@ -80,7 +80,7 @@ CREATE TABLE `detail_penjualan` (
   `JumlahJual` int NOT NULL,
   `HargaSatuan` decimal(12,2) NOT NULL,
   `Subtotal` decimal(15,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -105,7 +105,7 @@ CREATE TABLE `gudang` (
   `StatusStok` enum('TERSEDIA','HABIS','HAMPIR_HABIS') NOT NULL DEFAULT 'TERSEDIA',
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -130,7 +130,7 @@ CREATE TABLE `ledger_retailer` (
   `StatusBlock` enum('VALIDATED','REJECTED') NOT NULL DEFAULT 'VALIDATED',
   `ValidatedAt` datetime DEFAULT NULL,
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -155,7 +155,7 @@ CREATE TABLE `nota_penerimaan` (
   `CatatanPenerimaan` text,
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -187,7 +187,7 @@ CREATE TABLE `orders` (
   `DibuatOleh` int DEFAULT NULL,
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `orders`
@@ -216,7 +216,7 @@ CREATE TABLE `penjualan` (
   `DibuatOleh` int DEFAULT NULL,
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -232,7 +232,7 @@ CREATE TABLE `retailer` (
   `KontakRetailer` varchar(100) DEFAULT NULL,
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `retailer`
@@ -258,7 +258,7 @@ CREATE TABLE `users` (
   `StatusAkun` enum('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
   `CreatedAt` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`

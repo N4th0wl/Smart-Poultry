@@ -11,20 +11,20 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
         
-        // In development, allow all localhost and devtunnels origins
-        if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-            if (origin.startsWith('http://localhost:') || origin.includes('.devtunnels.ms')) {
-                return callback(null, true);
-            }
-        }
+        // Allow all localhost and devtunnels origins
+        if (origin.startsWith('http://localhost:')) return callback(null, true);
+        if (origin.endsWith('.devtunnels.ms')) return callback(null, true);
         
         // Check against allowed origins
-        const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5174').split(',');
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
+        const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5174').split(',').map(o => o.trim()).filter(Boolean);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
         
-        callback(new Error('Not allowed by CORS'));
+        // In production, be strict; in development, be permissive
+        if (process.env.NODE_ENV === 'production') {
+            callback(new Error('Not allowed by CORS'));
+        } else {
+            callback(null, true);
+        }
     },
     credentials: true
 }));

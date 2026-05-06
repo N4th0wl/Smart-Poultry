@@ -24,6 +24,7 @@ app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
         if (origin.startsWith('http://localhost:')) return callback(null, true);
+        if (origin.endsWith('.devtunnels.ms')) return callback(null, true);
         const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
         if (allowedOrigins.includes(origin)) return callback(null, true);
         if (process.env.NODE_ENV === 'production') {
